@@ -12,11 +12,13 @@
 namespace Symfony\Component\DependencyInjection\Tests\Compiler;
 
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Config\FileLocator;
 use Symfony\Component\DependencyInjection\Compiler\AutowireRequiredMethodsPass;
 use Symfony\Component\DependencyInjection\Compiler\AutowirePass;
 use Symfony\Component\DependencyInjection\Compiler\ResolveClassPass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Exception\RuntimeException;
+use Symfony\Component\DependencyInjection\Loader\XmlFileLoader;
 use Symfony\Component\DependencyInjection\Reference;
 use Symfony\Component\DependencyInjection\Tests\Fixtures\includes\FooVariadic;
 use Symfony\Component\DependencyInjection\TypedReference;
@@ -129,24 +131,6 @@ class AutowirePassTest extends TestCase
         $this->assertCount(2, $container->getDefinition('h')->getArguments());
         $this->assertEquals(B::class, (string) $container->getDefinition('h')->getArgument(0));
         $this->assertEquals(DInterface::class, (string) $container->getDefinition('h')->getArgument(1));
-    }
-
-    /**
-     * @group legacy
-     */
-    public function testExceptionsAreStored()
-    {
-        $container = new ContainerBuilder();
-
-        $container->register('c1', __NAMESPACE__.'\CollisionA');
-        $container->register('c2', __NAMESPACE__.'\CollisionB');
-        $container->register('c3', __NAMESPACE__.'\CollisionB');
-        $aDefinition = $container->register('a', __NAMESPACE__.'\CannotBeAutowired');
-        $aDefinition->setAutowired(true);
-
-        $pass = new AutowirePass(false);
-        $pass->process($container);
-        $this->assertCount(1, $pass->getAutowiringExceptions());
     }
 
     /**
@@ -265,11 +249,10 @@ class AutowirePassTest extends TestCase
     }
 
     /**
-     * @group legacy
-     * @expectedDeprecation Relying on service auto-registration for type "Symfony\Component\DependencyInjection\Tests\Compiler\Lille" is deprecated since version 3.4 and won't be supported in 4.0. Create a service named "Symfony\Component\DependencyInjection\Tests\Compiler\Lille" instead.
-     * @expectedDeprecation Relying on service auto-registration for type "Symfony\Component\DependencyInjection\Tests\Compiler\Dunglas" is deprecated since version 3.4 and won't be supported in 4.0. Create a service named "Symfony\Component\DependencyInjection\Tests\Compiler\Dunglas" instead.
+     * @expectedException \Symfony\Component\DependencyInjection\Exception\AutowiringFailedException
+     * @expectedExceptionMessage Cannot autowire service "coop_tilleuls": argument "$j" of method "Symfony\Component\DependencyInjection\Tests\Compiler\LesTilleuls::__construct()" references class "Symfony\Component\DependencyInjection\Tests\Compiler\Dunglas" but no such service exists.
      */
-    public function testCreateDefinition()
+    public function testServicesAreNotAutoCreated()
     {
         $container = new ContainerBuilder();
 
@@ -278,19 +261,6 @@ class AutowirePassTest extends TestCase
 
         $pass = new AutowirePass();
         $pass->process($container);
-
-        $this->assertCount(2, $container->getDefinition('coop_tilleuls')->getArguments());
-        $this->assertEquals('autowired.Symfony\Component\DependencyInjection\Tests\Compiler\Dunglas', $container->getDefinition('coop_tilleuls')->getArgument(0));
-        $this->assertEquals('autowired.Symfony\Component\DependencyInjection\Tests\Compiler\Dunglas', $container->getDefinition('coop_tilleuls')->getArgument(1));
-
-        $dunglasDefinition = $container->getDefinition('autowired.Symfony\Component\DependencyInjection\Tests\Compiler\Dunglas');
-        $this->assertEquals(__NAMESPACE__.'\Dunglas', $dunglasDefinition->getClass());
-        $this->assertFalse($dunglasDefinition->isPublic());
-        $this->assertCount(1, $dunglasDefinition->getArguments());
-        $this->assertEquals('autowired.Symfony\Component\DependencyInjection\Tests\Compiler\Lille', $dunglasDefinition->getArgument(0));
-
-        $lilleDefinition = $container->getDefinition('autowired.Symfony\Component\DependencyInjection\Tests\Compiler\Lille');
-        $this->assertEquals(__NAMESPACE__.'\Lille', $lilleDefinition->getClass());
     }
 
     public function testResolveParameter()
@@ -341,7 +311,7 @@ class AutowirePassTest extends TestCase
 
     /**
      * @expectedException \Symfony\Component\DependencyInjection\Exception\AutowiringFailedException
-     * @expectedExceptionMessage Cannot autowire service "a": argument "$r" of method "Symfony\Component\DependencyInjection\Tests\Compiler\BadTypeHintedArgument::__construct()" has type "Symfony\Component\DependencyInjection\Tests\Compiler\NotARealClass" but this class cannot be loaded.
+     * @expectedExceptionMessage Cannot autowire service "a": argument "$r" of method "Symfony\Component\DependencyInjection\Tests\Compiler\BadTypeHintedArgument::__construct()" has type "Symfony\Component\DependencyInjection\Tests\Compiler\NotARealClass" but this class was not found.
      */
     public function testClassNotFoundThrowsException()
     {
@@ -358,7 +328,7 @@ class AutowirePassTest extends TestCase
 
     /**
      * @expectedException \Symfony\Component\DependencyInjection\Exception\AutowiringFailedException
-     * @expectedExceptionMessage Cannot autowire service "a": argument "$r" of method "Symfony\Component\DependencyInjection\Tests\Compiler\BadParentTypeHintedArgument::__construct()" has type "Symfony\Component\DependencyInjection\Tests\Compiler\OptionalServiceClass" but this class cannot be loaded.
+     * @expectedExceptionMessage Cannot autowire service "a": argument "$r" of method "Symfony\Component\DependencyInjection\Tests\Compiler\BadParentTypeHintedArgument::__construct()" has type "Symfony\Component\DependencyInjection\Tests\Compiler\OptionalServiceClass" but this class is missing a parent class (Class Symfony\Bug\NotExistClass not found).
      */
     public function testParentClassNotFoundThrowsException()
     {
@@ -581,25 +551,6 @@ class AutowirePassTest extends TestCase
         );
     }
 
-    /**
-     * @group legacy
-     * @expectedDeprecation Relying on service auto-registration for type "Symfony\Component\DependencyInjection\Tests\Compiler\A" is deprecated since version 3.4 and won't be supported in 4.0. Create a service named "Symfony\Component\DependencyInjection\Tests\Compiler\A" instead.
-     */
-    public function testTypedReference()
-    {
-        $container = new ContainerBuilder();
-
-        $container
-            ->register('bar', Bar::class)
-            ->setProperty('a', array(new TypedReference(A::class, A::class, Bar::class)))
-        ;
-
-        $pass = new AutowirePass();
-        $pass->process($container);
-
-        $this->assertSame(A::class, $container->getDefinition('autowired.'.A::class)->getClass());
-    }
-
     public function getCreateResourceTests()
     {
         return array(
@@ -636,6 +587,23 @@ class AutowirePassTest extends TestCase
         $container->register('c1', CollisionA::class);
         $container->register('c2', CollisionB::class);
         $aDefinition = $container->register('setter_injection_collision', SetterInjectionCollision::class);
+        $aDefinition->setAutowired(true);
+
+        (new AutowireRequiredMethodsPass())->process($container);
+
+        $pass = new AutowirePass();
+        $pass->process($container);
+    }
+
+    /**
+     * @expectedException \Symfony\Component\DependencyInjection\Exception\AutowiringFailedException
+     * @expectedExceptionMessage Cannot autowire service "my_service": argument "$i" of method "Symfony\Component\DependencyInjection\Tests\Compiler\K::__construct()" references interface "Symfony\Component\DependencyInjection\Tests\Compiler\IInterface" but no such service exists. Did you create a class that implements this interface?
+     */
+    public function testInterfaceWithNoImplementationSuggestToWriteOne()
+    {
+        $container = new ContainerBuilder();
+
+        $aDefinition = $container->register('my_service', K::class);
         $aDefinition->setAutowired(true);
 
         (new AutowireRequiredMethodsPass())->process($container);
@@ -728,10 +696,28 @@ class AutowirePassTest extends TestCase
     public function provideNotWireableCalls()
     {
         return array(
-            array('setNotAutowireable', 'Cannot autowire service "foo": argument "$n" of method "Symfony\Component\DependencyInjection\Tests\Compiler\NotWireable::setNotAutowireable()" has type "Symfony\Component\DependencyInjection\Tests\Compiler\NotARealClass" but this class cannot be loaded.'),
+            array('setNotAutowireable', 'Cannot autowire service "foo": argument "$n" of method "Symfony\Component\DependencyInjection\Tests\Compiler\NotWireable::setNotAutowireable()" has type "Symfony\Component\DependencyInjection\Tests\Compiler\NotARealClass" but this class was not found.'),
             array('setDifferentNamespace', 'Cannot autowire service "foo": argument "$n" of method "Symfony\Component\DependencyInjection\Tests\Compiler\NotWireable::setDifferentNamespace()" references class "stdClass" but no such service exists. It cannot be auto-registered because it is from a different root namespace.'),
             array(null, 'Invalid service "foo": method "Symfony\Component\DependencyInjection\Tests\Compiler\NotWireable::setProtectedMethod()" must be public.'),
         );
+    }
+
+    /**
+     * @expectedException \Symfony\Component\DependencyInjection\Exception\AutowiringFailedException
+     * @expectedExceptionMessage Cannot autowire service "foo": argument "$sam" of method "Symfony\Component\DependencyInjection\Tests\Compiler\NotWireable::setNotAutowireableBecauseOfATypo()" references class "Symfony\Component\DependencyInjection\Tests\Compiler\lesTilleuls" but no such service exists. Did you mean "Symfony\Component\DependencyInjection\Tests\Compiler\LesTilleuls"?
+     */
+    public function testSuggestRegisteredServicesWithSimilarCase()
+    {
+        $container = new ContainerBuilder();
+
+        $container->register(LesTilleuls::class, LesTilleuls::class);
+        $container->register('foo', NotWireable::class)->setAutowired(true)
+            ->addMethodCall('setNotAutowireableBecauseOfATypo', array())
+        ;
+
+        (new ResolveClassPass())->process($container);
+        (new AutowireRequiredMethodsPass())->process($container);
+        (new AutowirePass())->process($container);
     }
 
     /**
@@ -788,5 +774,17 @@ class AutowirePassTest extends TestCase
 
         $pass = new AutowirePass();
         $pass->process($container);
+    }
+
+    public function testInlineServicesAreNotCandidates()
+    {
+        $container = new ContainerBuilder();
+        $loader = new XmlFileLoader($container, new FileLocator(realpath(__DIR__.'/../Fixtures/xml')));
+        $loader->load('services_inline_not_candidate.xml');
+
+        $pass = new AutowirePass();
+        $pass->process($container);
+
+        $this->assertSame(array(), $container->getDefinition('autowired')->getArguments());
     }
 }

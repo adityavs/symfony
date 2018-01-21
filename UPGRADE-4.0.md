@@ -1,10 +1,49 @@
 UPGRADE FROM 3.x to 4.0
 =======================
 
+Symfony Framework
+-----------------
+
+The first step to upgrade a Symfony 3.x application to 4.x is to update the
+file and directory structure of your application:
+
+| Symfony 3.x                         | Symfony 4.x
+| ----------------------------------- | --------------------------------
+| `app/config/`                       | `config/`
+| `app/config/*.yml`                  | `config/*.yaml` and `config/packages/*.yaml`
+| `app/config/parameters.yml.dist`    | `config/services.yaml` and `.env.dist`
+| `app/config/parameters.yml`         | `config/services.yaml` and `.env`
+| `app/Resources/<BundleName>/views/` | `templates/bundles/<BundleName>/`
+| `app/Resources/`                    | `src/Resources/`
+| `app/Resources/assets/`             | `assets/`
+| `app/Resources/translations/`       | `translations/`
+| `app/Resources/views/`              | `templates/`
+| `src/AppBundle/`                    | `src/`
+| `var/logs/`                         | `var/log/`
+| `web/`                              | `public/`
+| `web/app.php`                       | `public/index.php`
+| `web/app_dev.php`                   | `public/index.php`
+
+Then, upgrade the contents of your console script and your front controller:
+
+* `bin/console`: https://github.com/symfony/recipes/blob/master/symfony/console/3.3/bin/console
+* `public/index.php`: https://github.com/symfony/recipes/blob/master/symfony/framework-bundle/3.3/public/index.php
+
+Lastly, read the following article to add Symfony Flex to your application and
+upgrade the configuration files: https://symfony.com/doc/current/setup/flex.html
+
+If you use Symfony components instead of the whole framework, you can find below
+the upgrading instructions for each individual bundle and component.
+
 ClassLoader
 -----------
 
  * The component has been removed. Use Composer instead.
+
+Config
+------
+
+ * The protected `TreeBuilder::$builder` property has been removed.
 
 Console
 -------
@@ -186,11 +225,20 @@ DependencyInjection
 
  * The `ExtensionCompilerPass` has been moved to before-optimization passes with priority -1000.
 
+DoctrineBridge
+--------------
+
+* The `Symfony\Bridge\Doctrine\HttpFoundation\DbalSessionHandler` and
+  `Symfony\Bridge\Doctrine\HttpFoundation\DbalSessionHandlerSchema` have been removed. Use
+  `Symfony\Component\HttpFoundation\Session\Storage\Handler\PdoSessionHandler` instead.
+
 EventDispatcher
 ---------------
 
  * The `ContainerAwareEventDispatcher` class has been removed.
    Use `EventDispatcher` with closure factories instead.
+
+ * The `reset()` method has been added to `TraceableEventDispatcherInterface`.
 
 ExpressionLanguage
 ------------------
@@ -216,6 +264,10 @@ Finder
 
 Form
 ----
+
+* The values of the `FormEvents::*` constants have been updated to match the
+  constant names. You should only update your application if you relied on the
+  constant values instead of their names.
 
  * The `choices_as_values` option of the `ChoiceType` has been removed.
 
@@ -305,7 +357,7 @@ Form
    ```php
    class MyTimezoneType extends AbstractType
    {
-       public function. getParent()
+       public function getParent()
        {
            return TimezoneType::class;
        }
@@ -317,8 +369,12 @@ Form
    }
    ```
 
+ * `FormRendererInterface::setTheme` and `FormRendererEngineInterface::setTheme` have a new optional argument `$useDefaultThemes` with a default value set to `true`.
+
 FrameworkBundle
 ---------------
+
+ * The `session.use_strict_mode` option has been removed and strict mode is always enabled.
 
  * The `validator.mapping.cache.doctrine.apc` service has been removed.
 
@@ -479,11 +535,11 @@ FrameworkBundle
     first argument.
 
  * `RouterDebugCommand::__construct()` now requires an instance of
-   `Symfony\Component\Routing\RouterInteface` as
+   `Symfony\Component\Routing\RouterInterface` as
     first argument.
 
  * `RouterMatchCommand::__construct()` now requires an instance of
-   `Symfony\Component\Routing\RouterInteface` as
+   `Symfony\Component\Routing\RouterInterface` as
     first argument.
 
  * `TranslationDebugCommand::__construct()` now requires an instance of
@@ -533,12 +589,17 @@ HttpFoundation
  * The ability to check only for cacheable HTTP methods using `Request::isMethodSafe()` is
    not supported anymore, use `Request::isMethodCacheable()` instead.
 
- * The `Symfony\Component\HttpFoundation\Session\Storage\Handler\NativeSessionHandler`,
-   `Symfony\Component\HttpFoundation\Session\Storage\Proxy\AbstractProxy`,
-   `Symfony\Component\HttpFoundation\Session\Storage\Proxy\NativeProxy` and
-   `Symfony\Component\HttpFoundation\Session\Storage\Proxy\SessionHandlerProxy` classes have been removed.
+ * The `Symfony\Component\HttpFoundation\Session\Storage\Handler\WriteCheckSessionHandler` class has been
+   removed. Implement `SessionUpdateTimestampHandlerInterface` or extend `AbstractSessionHandler` instead.
 
- * `NativeSessionStorage::setSaveHandler()` now requires an instance of `\SessionHandlerInterface` as argument.
+ * The `Symfony\Component\HttpFoundation\Session\Storage\Handler\NativeSessionHandler` and
+   `Symfony\Component\HttpFoundation\Session\Storage\Proxy\NativeProxy` classes have been removed.
+
+ * The `Symfony\Component\HttpFoundation\Session\Storage\Handler\MongoDbSessionHandler` does not work with the legacy
+   mongo extension anymore. It requires mongodb/mongodb package and ext-mongodb.
+
+ * The `Symfony\Component\HttpFoundation\Session\Storage\Handler\MemcacheSessionHandler` class has been removed.
+   Use `Symfony\Component\HttpFoundation\Session\Storage\Handler\MemcachedSessionHandler` instead.
 
 HttpKernel
 ----------
@@ -566,16 +627,10 @@ HttpKernel
        # ...
 
        # explicit commands registration
-       AppBundle\Command:
+       AppBundle\Command\:
            resource: '../../src/AppBundle/Command/*'
            tags: ['console.command']
    ```
-
- * Removed the `kernel.root_dir` parameter. Use the `kernel.project_dir` parameter
-   instead.
-
- * Removed the `Kernel::getRootDir()` method. Use the `Kernel::getProjectDir()`
-   method instead.
 
  * The `Extension::addClassesToCompile()` and `Extension::getClassesToCompile()` methods have been removed.
 
@@ -611,6 +666,10 @@ HttpKernel
 
  * The `Symfony\Component\HttpKernel\Config\EnvParametersResource` class has been removed.
 
+ * The `reset()` method has been added to `Symfony\Component\HttpKernel\DataCollector\DataCollectorInterface`.
+
+ * The `clear()` method has been added to `Symfony\Component\HttpKernel\Log\DebugLoggerInterface`.
+
  * The `ChainCacheClearer::add()` method has been removed,
    inject the list of clearers as a constructor argument instead.
 
@@ -626,6 +685,8 @@ Ldap
 
 Process
 -------
+
+ * Passing a not existing working directory to the constructor of the `Symfony\Component\Process\Process` class is not supported anymore.
 
  * The `Symfony\Component\Process\ProcessBuilder` class has been removed,
    use the `Symfony\Component\Process\Process` class directly instead.
@@ -673,6 +734,9 @@ Security
    `DigestAuthenticationListener` and `DigestAuthenticationEntryPoint` classes
    have been removed. Use another authentication system like `http_basic` instead.
 
+ * The `GuardAuthenticatorInterface` interface has been removed.
+   Use `AuthenticatorInterface` instead.
+
 SecurityBundle
 --------------
 
@@ -693,10 +757,10 @@ SecurityBundle
 
  * Removed the HTTP digest authentication system. The `HttpDigestFactory` class
    has been removed. Use another authentication system like `http_basic` instead.
-   
+
  * The `switch_user.stateless` option is now always true if the firewall is stateless.
 
- * Not configuring explicitly the provider on a firewall is ambiguous when there is more than one registered provider. 
+ * Not configuring explicitly the provider on a firewall is ambiguous when there is more than one registered provider.
    The first configured provider is not used anymore and an exception is thrown instead.
    Explicitly configure the provider to use on your firewalls.
 

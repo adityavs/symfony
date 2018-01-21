@@ -25,7 +25,7 @@ use Symfony\Component\HttpFoundation\Response;
  *
  * @author Fabien Potencier <fabien@symfony.com>
  *
- * @method Request|null getRequest() A Request instance
+ * @method Request|null  getRequest()  A Request instance
  * @method Response|null getResponse() A Response instance
  */
 class Client extends BaseClient
@@ -34,8 +34,6 @@ class Client extends BaseClient
     private $catchExceptions = true;
 
     /**
-     * Constructor.
-     *
      * @param HttpKernelInterface $kernel    An HttpKernel instance
      * @param array               $server    The server parameters (equivalent of $_SERVER)
      * @param History             $history   A History instance to store the browser history
@@ -63,8 +61,6 @@ class Client extends BaseClient
     /**
      * Makes a request.
      *
-     * @param Request $request A Request instance
-     *
      * @return Response A Response instance
      */
     protected function doRequest($request)
@@ -80,8 +76,6 @@ class Client extends BaseClient
 
     /**
      * Returns the script to execute when the request must be insulated.
-     *
-     * @param Request $request A Request instance
      *
      * @return string
      */
@@ -136,8 +130,6 @@ EOF;
     /**
      * Converts the BrowserKit request to a HttpKernel request.
      *
-     * @param DomRequest $request A DomRequest instance
-     *
      * @return Request A Request instance
      */
     protected function filterRequest(DomRequest $request)
@@ -162,8 +154,6 @@ EOF;
      *
      * @see UploadedFile
      *
-     * @param array $files An array of files
-     *
      * @return array An array with all uploaded files marked as already moved
      */
     protected function filterFiles(array $files)
@@ -178,7 +168,7 @@ EOF;
                         '',
                         $value->getClientOriginalName(),
                         $value->getClientMimeType(),
-                        0,
+                        null,
                         UPLOAD_ERR_INI_SIZE,
                         true
                     );
@@ -187,7 +177,7 @@ EOF;
                         $value->getPathname(),
                         $value->getClientOriginalName(),
                         $value->getClientMimeType(),
-                        $value->getClientSize(),
+                        null,
                         $value->getError(),
                         true
                     );
@@ -200,8 +190,6 @@ EOF;
 
     /**
      * Converts the HttpKernel response to a BrowserKit response.
-     *
-     * @param Response $response A Response instance
      *
      * @return DomResponse A DomResponse instance
      */

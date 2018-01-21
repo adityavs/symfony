@@ -33,7 +33,7 @@ class RegisterControllerArgumentLocatorsPass implements CompilerPassInterface
     private $resolverServiceId;
     private $controllerTag;
 
-    public function __construct($resolverServiceId = 'argument_resolver.service', $controllerTag = 'controller.service_arguments')
+    public function __construct(string $resolverServiceId = 'argument_resolver.service', string $controllerTag = 'controller.service_arguments')
     {
         $this->resolverServiceId = $resolverServiceId;
         $this->controllerTag = $controllerTag;
@@ -135,6 +135,11 @@ class RegisterControllerArgumentLocatorsPass implements CompilerPassInterface
                         $binding = $bindings[$bindingName];
 
                         list($bindingValue, $bindingId) = $binding->getValues();
+
+                        if (!$bindingValue instanceof Reference) {
+                            continue;
+                        }
+
                         $binding->setValues(array($bindingValue, $bindingId, true));
                         $args[$p->name] = $bindingValue;
 

@@ -36,7 +36,7 @@ class PhpArrayAdapter implements AdapterInterface, PruneableInterface, Resettabl
      * @param string           $file         The PHP file were values are cached
      * @param AdapterInterface $fallbackPool A pool to fallback on when an item is not hit
      */
-    public function __construct($file, AdapterInterface $fallbackPool)
+    public function __construct(string $file, AdapterInterface $fallbackPool)
     {
         $this->file = $file;
         $this->pool = $fallbackPool;
@@ -224,14 +224,7 @@ class PhpArrayAdapter implements AdapterInterface, PruneableInterface, Resettabl
         return $this->pool->commit();
     }
 
-    /**
-     * Generator for items.
-     *
-     * @param array $keys
-     *
-     * @return \Generator
-     */
-    private function generateItems(array $keys)
+    private function generateItems(array $keys): \Generator
     {
         $f = $this->createCacheItem;
         $fallbackKeys = array();

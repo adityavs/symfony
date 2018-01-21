@@ -1,6 +1,13 @@
 CHANGELOG
 =========
 
+4.1.0
+-----
+
+ * The `logout_on_user_change` firewall option is deprecated and will be removed in 5.0.
+ * deprecated `SecurityUserValueResolver`, use
+   `Symfony\Component\Security\Http\Controller\UserValueResolver` instead.
+
 4.0.0
 -----
 
@@ -14,6 +21,9 @@ CHANGELOG
  * removed command `init:acl` along with `InitAclCommand` class
  * removed `acl` configuration key and related services, use symfony/acl-bundle instead
  * removed auto picking the first registered provider when no configured provider on a firewall and ambiguous
+ * the firewall option `logout_on_user_change` is now always true, which will trigger a logout if the user changes
+   between requests
+ * the `switch_user.stateless` firewall option is `true` for stateless firewalls
 
 3.4.0
 -----

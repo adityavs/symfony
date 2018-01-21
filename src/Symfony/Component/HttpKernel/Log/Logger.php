@@ -37,15 +37,28 @@ class Logger extends AbstractLogger
     private $formatter;
     private $handle;
 
-    public function __construct($minLevel = LogLevel::WARNING, $output = 'php://stderr', callable $formatter = null)
+    public function __construct(string $minLevel = null, $output = 'php://stderr', callable $formatter = null)
     {
+        if (null === $minLevel) {
+            $minLevel = LogLevel::WARNING;
+
+            if (isset($_ENV['SHELL_VERBOSITY']) || isset($_SERVER['SHELL_VERBOSITY'])) {
+                switch ((int) (isset($_ENV['SHELL_VERBOSITY']) ? $_ENV['SHELL_VERBOSITY'] : $_SERVER['SHELL_VERBOSITY'])) {
+                    case -1: $minLevel = LogLevel::ERROR; break;
+                    case 1: $minLevel = LogLevel::NOTICE; break;
+                    case 2: $minLevel = LogLevel::INFO; break;
+                    case 3: $minLevel = LogLevel::DEBUG; break;
+                }
+            }
+        }
+
         if (!isset(self::$levels[$minLevel])) {
             throw new InvalidArgumentException(sprintf('The log level "%s" does not exist.', $minLevel));
         }
 
         $this->minLevelIndex = self::$levels[$minLevel];
         $this->formatter = $formatter ?: array($this, 'format');
-        if (false === $this->handle = @fopen($output, 'a')) {
+        if (false === $this->handle = is_resource($output) ? $output : @fopen($output, 'a')) {
             throw new InvalidArgumentException(sprintf('Unable to open "%s".', $output));
         }
     }
@@ -67,14 +80,7 @@ class Logger extends AbstractLogger
         fwrite($this->handle, $formatter($level, $message, $context));
     }
 
-    /**
-     * @param string $level
-     * @param string $message
-     * @param array  $context
-     *
-     * @return string
-     */
-    private function format($level, $message, array $context)
+    private function format(string $level, string $message, array $context): string
     {
         if (false !== strpos($message, '{')) {
             $replacements = array();

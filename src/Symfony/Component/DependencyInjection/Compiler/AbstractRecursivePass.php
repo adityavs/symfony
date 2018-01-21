@@ -52,7 +52,7 @@ abstract class AbstractRecursivePass implements CompilerPassInterface
      */
     protected function processValue($value, $isRoot = false)
     {
-        if (is_array($value)) {
+        if (\is_array($value)) {
             foreach ($value as $k => $v) {
                 if ($isRoot) {
                     $this->currentId = $k;
@@ -67,7 +67,6 @@ abstract class AbstractRecursivePass implements CompilerPassInterface
             $value->setArguments($this->processValue($value->getArguments()));
             $value->setProperties($this->processValue($value->getProperties()));
             $value->setMethodCalls($this->processValue($value->getMethodCalls()));
-            $value->setBindings($this->processValue($value->getBindings()));
 
             $changes = $value->getChanges();
             if (isset($changes['factory'])) {

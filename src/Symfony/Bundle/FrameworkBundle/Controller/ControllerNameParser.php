@@ -24,11 +24,6 @@ class ControllerNameParser
 {
     protected $kernel;
 
-    /**
-     * Constructor.
-     *
-     * @param KernelInterface $kernel A KernelInterface instance
-     */
     public function __construct(KernelInterface $kernel)
     {
         $this->kernel = $kernel;
@@ -111,12 +106,8 @@ class ControllerNameParser
 
     /**
      * Attempts to find a bundle that is *similar* to the given bundle name.
-     *
-     * @param string $nonExistentBundleName
-     *
-     * @return string
      */
-    private function findAlternative($nonExistentBundleName)
+    private function findAlternative(string $nonExistentBundleName): ?string
     {
         $bundleNames = array_map(function ($b) {
             return $b->getName();

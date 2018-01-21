@@ -28,12 +28,6 @@ class MainConfiguration implements ConfigurationInterface
     private $factories;
     private $userProviderFactories;
 
-    /**
-     * Constructor.
-     *
-     * @param array $factories
-     * @param array $userProviderFactories
-     */
     public function __construct(array $factories, array $userProviderFactories)
     {
         $this->factories = $factories;
@@ -204,8 +198,9 @@ class MainConfiguration implements ConfigurationInterface
             ->booleanNode('stateless')->defaultFalse()->end()
             ->scalarNode('context')->cannotBeEmpty()->end()
             ->booleanNode('logout_on_user_change')
-                ->defaultFalse()
-                ->info('When true, it will trigger a logout for the user if something has changed. This will be the default behavior as of Syfmony 4.0.')
+                ->defaultTrue()
+                ->info('When true, it will trigger a logout for the user if something has changed. Note: No-Op option since 4.0. Will always be true.')
+                ->setDeprecated('The "%path%.%node%" configuration key has been deprecated in Symfony 4.1 and will be removed in 5.0.')
             ->end()
             ->arrayNode('logout')
                 ->treatTrueLike(array())
@@ -245,7 +240,7 @@ class MainConfiguration implements ConfigurationInterface
             ->arrayNode('anonymous')
                 ->canBeUnset()
                 ->children()
-                    ->scalarNode('secret')->defaultValue(uniqid('', true))->end()
+                    ->scalarNode('secret')->defaultNull()->end()
                 ->end()
             ->end()
             ->arrayNode('switch_user')
@@ -294,17 +289,6 @@ class MainConfiguration implements ConfigurationInterface
                     }
 
                     return $firewall;
-                })
-            ->end()
-            ->validate()
-                ->ifTrue(function ($v) {
-                    return (isset($v['stateless']) && true === $v['stateless']) || (isset($v['security']) && false === $v['security']);
-                })
-                ->then(function ($v) {
-                    // this option doesn't change behavior when true when stateless, so prevent deprecations
-                    $v['logout_on_user_change'] = true;
-
-                    return $v;
                 })
             ->end()
         ;

@@ -13,6 +13,7 @@ namespace Symfony\Component\DependencyInjection\Compiler;
 
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Exception\LogicException;
+use Symfony\Component\DependencyInjection\Exception\RuntimeException;
 use Symfony\Component\DependencyInjection\Extension\ConfigurationExtensionInterface;
 use Symfony\Component\DependencyInjection\Extension\Extension;
 use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
@@ -55,18 +56,26 @@ class MergeExtensionConfigurationPass implements CompilerPassInterface
             }
             $config = $resolvingBag->resolveValue($config);
 
-            $tmpContainer = new MergeExtensionConfigurationContainerBuilder($extension, $resolvingBag);
-            $tmpContainer->setResourceTracking($container->isTrackingResources());
-            $tmpContainer->addObjectResource($extension);
-            if ($extension instanceof ConfigurationExtensionInterface && null !== $configuration = $extension->getConfiguration($config, $tmpContainer)) {
-                $tmpContainer->addObjectResource($configuration);
-            }
+            try {
+                $tmpContainer = new MergeExtensionConfigurationContainerBuilder($extension, $resolvingBag);
+                $tmpContainer->setResourceTracking($container->isTrackingResources());
+                $tmpContainer->addObjectResource($extension);
+                if ($extension instanceof ConfigurationExtensionInterface && null !== $configuration = $extension->getConfiguration($config, $tmpContainer)) {
+                    $tmpContainer->addObjectResource($configuration);
+                }
 
-            foreach ($exprLangProviders as $provider) {
-                $tmpContainer->addExpressionLanguageProvider($provider);
-            }
+                foreach ($exprLangProviders as $provider) {
+                    $tmpContainer->addExpressionLanguageProvider($provider);
+                }
 
-            $extension->load($config, $tmpContainer);
+                $extension->load($config, $tmpContainer);
+            } catch (\Exception $e) {
+                if ($resolvingBag instanceof MergeExtensionConfigurationParameterBag) {
+                    $container->getParameterBag()->mergeEnvPlaceholders($resolvingBag);
+                }
+
+                throw $e;
+            }
 
             if ($resolvingBag instanceof MergeExtensionConfigurationParameterBag) {
                 // don't keep track of env vars that are *overridden* when configs are merged
@@ -163,5 +172,31 @@ class MergeExtensionConfigurationContainerBuilder extends ContainerBuilder
     public function compile(bool $resolveEnvPlaceholders = false)
     {
         throw new LogicException(sprintf('Cannot compile the container in extension "%s".', $this->extensionClass));
+    }
+
+    /**
+     * {@inheritdoc}
+     */
+    public function resolveEnvPlaceholders($value, $format = null, array &$usedEnvs = null)
+    {
+        if (true !== $format || !\is_string($value)) {
+            return parent::resolveEnvPlaceholders($value, $format, $usedEnvs);
+        }
+
+        $bag = $this->getParameterBag();
+        $value = $bag->resolveValue($value);
+
+        foreach ($bag->getEnvPlaceholders() as $env => $placeholders) {
+            if (false === strpos($env, ':')) {
+                continue;
+            }
+            foreach ($placeholders as $placeholder) {
+                if (false !== stripos($value, $placeholder)) {
+                    throw new RuntimeException(sprintf('Using a cast in "env(%s)" is incompatible with resolution at compile time in "%s". The logic in the extension should be moved to a compiler pass, or an env parameter with no cast should be used instead.', $env, $this->extensionClass));
+                }
+            }
+        }
+
+        return parent::resolveEnvPlaceholders($value, $format, $usedEnvs);
     }
 }

@@ -38,7 +38,6 @@ class SecurityExtensionTest extends TestCase
                     'form_login' => array(
                         'check_path' => '/some_area/login_check',
                     ),
-                    'logout_on_user_change' => true,
                 ),
             ),
         ));
@@ -62,7 +61,6 @@ class SecurityExtensionTest extends TestCase
             'firewalls' => array(
                 'some_firewall' => array(
                     'pattern' => '/.*',
-                    'logout_on_user_change' => true,
                 ),
             ),
         ));
@@ -90,7 +88,6 @@ class SecurityExtensionTest extends TestCase
                 'some_firewall' => array(
                     'pattern' => '/.*',
                     'http_basic' => array(),
-                    'logout_on_user_change' => true,
                 ),
             ),
         ));
@@ -113,7 +110,6 @@ class SecurityExtensionTest extends TestCase
                 'some_firewall' => array(
                     'pattern' => '/.*',
                     'http_basic' => null,
-                    'logout_on_user_change' => true,
                 ),
             ),
         ));
@@ -123,35 +119,6 @@ class SecurityExtensionTest extends TestCase
         $this->assertFalse($container->hasDefinition('security.access.role_hierarchy_voter'));
     }
 
-    /**
-     * @group legacy
-     * @expectedDeprecation Setting logout_on_user_change to false is deprecated as of 3.4 and will always be true in 4.0. Set logout_on_user_change to true in your firewall configuration.
-     */
-    public function testDeprecationForUserLogout()
-    {
-        $container = $this->getRawContainer();
-
-        $container->loadFromExtension('security', array(
-            'providers' => array(
-                'default' => array('id' => 'foo'),
-            ),
-
-            'firewalls' => array(
-                'some_firewall' => array(
-                    'pattern' => '/.*',
-                    'http_basic' => null,
-                    'logout_on_user_change' => false,
-                ),
-            ),
-        ));
-
-        $container->compile();
-    }
-
-    /**
-     * @group legacy
-     * @expectedDeprecation Firewall "some_firewall" is configured as "stateless" but the "switch_user.stateless" key is set to false. Both should have the same value, the firewall's "stateless" value will be used as default value for the "switch_user.stateless" key in 4.0.
-     */
     public function testSwitchUserNotStatelessOnStatelessFirewall()
     {
         $container = $this->getRawContainer();
@@ -166,22 +133,18 @@ class SecurityExtensionTest extends TestCase
                     'stateless' => true,
                     'http_basic' => null,
                     'switch_user' => array('stateless' => false),
-                    'logout_on_user_change' => true,
                 ),
             ),
         ));
 
         $container->compile();
+
+        $this->assertTrue($container->getDefinition('security.authentication.switchuser_listener.some_firewall')->getArgument(9));
     }
 
-    /**
-     * @expectedException \Symfony\Component\Config\Definition\Exception\InvalidConfigurationException
-     * @expectedExceptionMessage Not configuring explicitly the provider on "default" firewall is ambiguous as there is more than one registered provider.
-     */
-    public function testDeprecationForAmbiguousProvider()
+    public function testPerListenerProvider()
     {
         $container = $this->getRawContainer();
-
         $container->loadFromExtension('security', array(
             'providers' => array(
                 'first' => array('id' => 'foo'),
@@ -190,8 +153,32 @@ class SecurityExtensionTest extends TestCase
 
             'firewalls' => array(
                 'default' => array(
-                    'http_basic' => null,
-                    'logout_on_user_change' => true,
+                    'http_basic' => array('provider' => 'second'),
+                ),
+            ),
+        ));
+
+        $container->compile();
+        $this->addToAssertionCount(1);
+    }
+
+    /**
+     * @expectedException \Symfony\Component\Config\Definition\Exception\InvalidConfigurationException
+     * @expectedExceptionMessage Not configuring explicitly the provider for the "http_basic" listener on "ambiguous" firewall is ambiguous as there is more than one registered provider.
+     */
+    public function testMissingProviderForListener()
+    {
+        $container = $this->getRawContainer();
+        $container->loadFromExtension('security', array(
+            'providers' => array(
+                'first' => array('id' => 'foo'),
+                'second' => array('id' => 'bar'),
+            ),
+
+            'firewalls' => array(
+                'ambiguous' => array(
+                    'http_basic' => true,
+                    'form_login' => array('provider' => 'second'),
                 ),
             ),
         ));

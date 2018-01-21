@@ -106,12 +106,16 @@ class CachePoolPass implements CompilerPassInterface
 
         foreach ($clearers as $id => $pools) {
             $clearer = $container->getDefinition($id);
-            if ($clearer instanceof ChilDefinition) {
+            if ($clearer instanceof ChildDefinition) {
                 $clearer->replaceArgument(0, $pools);
             } else {
                 $clearer->setArgument(0, $pools);
             }
             $clearer->addTag('cache.pool.clearer');
+
+            if ('cache.system_clearer' === $id) {
+                $clearer->addTag('kernel.cache_clearer');
+            }
         }
     }
 
@@ -134,7 +138,7 @@ class CachePoolPass implements CompilerPassInterface
                 $definition = new Definition(AbstractAdapter::class);
                 $definition->setPublic(false);
                 $definition->setFactory(array(AbstractAdapter::class, 'createConnection'));
-                $definition->setArguments(array($dsn));
+                $definition->setArguments(array($dsn, array('lazy' => true)));
                 $container->setDefinition($name, $definition);
             }
         }

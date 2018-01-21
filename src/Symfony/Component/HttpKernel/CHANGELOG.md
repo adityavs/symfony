@@ -1,6 +1,12 @@
 CHANGELOG
 =========
 
+4.1.0
+-----
+
+ * added orphaned events support to `EventDataCollector`
+ * `ExceptionListener` now logs and collects exceptions at priority `2048` (previously logged at `-128` and collected at `0`)
+
 4.0.0
 -----
 
@@ -38,7 +44,9 @@ CHANGELOG
  * deprecated the `ChainCacheClearer::add()` method
  * deprecated the `CacheaWarmerAggregate::add()` and `setWarmers()` methods
  * made `CacheWarmerAggregate` and `ChainCacheClearer` classes final
-
+ * added the possibility to reset the profiler to its initial state
+ * deprecated data collectors without a `reset()` method
+ * deprecated implementing `DebugLoggerInterface` without a `clear()` method
 
 3.3.0
 -----

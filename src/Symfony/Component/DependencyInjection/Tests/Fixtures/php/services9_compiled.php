@@ -9,8 +9,6 @@ use Symfony\Component\DependencyInjection\Exception\RuntimeException;
 use Symfony\Component\DependencyInjection\ParameterBag\FrozenParameterBag;
 
 /**
- * ProjectServiceContainer.
- *
  * This class has been auto-generated
  * by the Symfony Dependency Injection Component.
  *
@@ -20,16 +18,20 @@ class ProjectServiceContainer extends Container
 {
     private $parameters;
     private $targetDirs = array();
-    private $privates = array();
 
     /**
-     * Constructor.
+     * @internal but protected for BC on cache:clear
      */
+    protected $privates = array();
+
     public function __construct()
     {
         $this->parameters = $this->getDefaultParameters();
 
         $this->services = $this->privates = array();
+        $this->syntheticIds = array(
+            'request' => true,
+        );
         $this->methodMap = array(
             'BAR' => 'getBARService',
             'BAR2' => 'getBAR2Service',
@@ -61,29 +63,36 @@ class ProjectServiceContainer extends Container
         );
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function reset()
     {
         $this->privates = array();
         parent::reset();
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function compile()
     {
         throw new LogicException('You cannot compile a dumped container that was already compiled.');
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function isCompiled()
     {
         return true;
+    }
+
+    public function getRemovedIds()
+    {
+        return array(
+            'Psr\\Container\\ContainerInterface' => true,
+            'Symfony\\Component\\DependencyInjection\\ContainerInterface' => true,
+            'configurator_service' => true,
+            'configurator_service_simple' => true,
+            'decorated.pif-pouf' => true,
+            'decorator_service.inner' => true,
+            'factory_simple' => true,
+            'inlined' => true,
+            'new_factory' => true,
+            'tagged_iterator_foo' => true,
+        );
     }
 
     /**
@@ -157,10 +166,10 @@ class ProjectServiceContainer extends Container
      */
     protected function getConfiguredServiceService()
     {
+        $this->services['configured_service'] = $instance = new \stdClass();
+
         $a = new \ConfClass();
         $a->setFoo(($this->services['baz'] ?? $this->getBazService()));
-
-        $this->services['configured_service'] = $instance = new \stdClass();
 
         $a->configureStdClass($instance);
 
@@ -287,9 +296,9 @@ class ProjectServiceContainer extends Container
      */
     protected function getFooWithInlineService()
     {
-        $a = new \Bar();
-
         $this->services['foo_with_inline'] = $instance = new \Foo();
+
+        $a = new \Bar();
 
         $a->pub = 'pub';
         $a->setBaz(($this->services['baz'] ?? $this->getBazService()));
@@ -335,7 +344,7 @@ class ProjectServiceContainer extends Container
      */
     protected function getMethodCall1Service()
     {
-        require_once '%path%foo.php';
+        include_once '%path%foo.php';
 
         $this->services['method_call1'] = $instance = new \Bar\FooClass();
 
@@ -400,9 +409,6 @@ class ProjectServiceContainer extends Container
         return $this->privates['factory_simple'] = new \SimpleFactoryClass('foo');
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getParameter($name)
     {
         $name = (string) $name;
@@ -417,9 +423,6 @@ class ProjectServiceContainer extends Container
         return $this->parameters[$name];
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function hasParameter($name)
     {
         $name = (string) $name;
@@ -427,17 +430,11 @@ class ProjectServiceContainer extends Container
         return isset($this->parameters[$name]) || isset($this->loadedDynamicParameters[$name]) || array_key_exists($name, $this->parameters);
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function setParameter($name, $value)
     {
         throw new LogicException('Impossible to call set() on a frozen ParameterBag.');
     }
 
-    /**
-     * {@inheritdoc}
-     */
     public function getParameterBag()
     {
         if (null === $this->parameterBag) {

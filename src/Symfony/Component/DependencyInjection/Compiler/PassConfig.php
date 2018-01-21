@@ -70,6 +70,12 @@ class PassConfig
             new CheckArgumentsValidityPass(false),
         ));
 
+        $this->beforeRemovingPasses = array(
+            -100 => array(
+                new ResolvePrivatesPass(),
+            ),
+        );
+
         $this->removingPasses = array(array(
             new RemovePrivateAliasesPass(),
             new ReplaceAliasByActualDefinitionPass(),
@@ -82,6 +88,7 @@ class PassConfig
             )),
             new DefinitionErrorExceptionPass(),
             new CheckExceptionOnInvalidReferenceBehaviorPass(),
+            new ResolveHotPathPass(),
         ));
     }
 
@@ -186,11 +193,6 @@ class PassConfig
         return $this->mergePass;
     }
 
-    /**
-     * Sets the Merge Pass.
-     *
-     * @param CompilerPassInterface $pass The merge pass
-     */
     public function setMergePass(CompilerPassInterface $pass)
     {
         $this->mergePass = $pass;

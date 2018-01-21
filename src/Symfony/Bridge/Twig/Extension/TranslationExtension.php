@@ -34,10 +34,6 @@ class TranslationExtension extends AbstractExtension
 
     public function __construct(TranslatorInterface $translator = null, NodeVisitorInterface $translationNodeVisitor = null)
     {
-        if (!$translationNodeVisitor) {
-            $translationNodeVisitor = new TranslationNodeVisitor();
-        }
-
         $this->translator = $translator;
         $this->translationNodeVisitor = $translationNodeVisitor;
     }
@@ -84,18 +80,18 @@ class TranslationExtension extends AbstractExtension
      */
     public function getNodeVisitors()
     {
-        return array($this->translationNodeVisitor, new TranslationDefaultDomainNodeVisitor());
+        return array($this->getTranslationNodeVisitor(), new TranslationDefaultDomainNodeVisitor());
     }
 
     public function getTranslationNodeVisitor()
     {
-        return $this->translationNodeVisitor;
+        return $this->translationNodeVisitor ?: $this->translationNodeVisitor = new TranslationNodeVisitor();
     }
 
     public function trans($message, array $arguments = array(), $domain = null, $locale = null)
     {
         if (null === $this->translator) {
-            return $message;
+            return strtr($message, $arguments);
         }
 
         return $this->translator->trans($message, $arguments, $domain, $locale);
@@ -104,7 +100,7 @@ class TranslationExtension extends AbstractExtension
     public function transchoice($message, $count, array $arguments = array(), $domain = null, $locale = null)
     {
         if (null === $this->translator) {
-            return $message;
+            return strtr($message, $arguments);
         }
 
         return $this->translator->transChoice($message, $count, array_merge(array('%count%' => $count), $arguments), $domain, $locale);
