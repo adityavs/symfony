@@ -26,9 +26,9 @@ use Symfony\Component\Intl\Exception\OutOfBoundsException;
  */
 class RingBuffer implements \ArrayAccess
 {
-    private $values = array();
+    private $values = [];
 
-    private $indices = array();
+    private $indices = [];
 
     private $cursor = 0;
 
@@ -42,7 +42,7 @@ class RingBuffer implements \ArrayAccess
     /**
      * {@inheritdoc}
      */
-    public function offsetExists($key)
+    public function offsetExists($key): bool
     {
         return isset($this->indices[$key]);
     }
@@ -53,10 +53,7 @@ class RingBuffer implements \ArrayAccess
     public function offsetGet($key)
     {
         if (!isset($this->indices[$key])) {
-            throw new OutOfBoundsException(sprintf(
-                'The index "%s" does not exist.',
-                $key
-            ));
+            throw new OutOfBoundsException(sprintf('The index "%s" does not exist.', $key));
         }
 
         return $this->values[$this->indices[$key]];

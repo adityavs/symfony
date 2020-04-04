@@ -12,6 +12,7 @@
 namespace Symfony\Bundle\SecurityBundle\Tests\Functional\app;
 
 use Symfony\Component\Config\Loader\LoaderInterface;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpKernel\Kernel;
 
@@ -46,35 +47,31 @@ class AppKernel extends Kernel
     /**
      * {@inheritdoc}
      */
-    public function getName()
+    public function getContainerClass(): string
     {
-        if (null === $this->name) {
-            $this->name = parent::getName().substr(md5($this->rootConfig), -16);
-        }
-
-        return $this->name;
+        return parent::getContainerClass().substr(md5($this->rootConfig), -16);
     }
 
-    public function registerBundles()
+    public function registerBundles(): iterable
     {
-        if (!is_file($filename = $this->getRootDir().'/'.$this->testCase.'/bundles.php')) {
+        if (!is_file($filename = $this->getProjectDir().'/'.$this->testCase.'/bundles.php')) {
             throw new \RuntimeException(sprintf('The bundles file "%s" does not exist.', $filename));
         }
 
         return include $filename;
     }
 
-    public function getRootDir()
+    public function getProjectDir(): string
     {
         return __DIR__;
     }
 
-    public function getCacheDir()
+    public function getCacheDir(): string
     {
         return sys_get_temp_dir().'/'.$this->varDir.'/'.$this->testCase.'/cache/'.$this->environment;
     }
 
-    public function getLogDir()
+    public function getLogDir(): string
     {
         return sys_get_temp_dir().'/'.$this->varDir.'/'.$this->testCase.'/logs';
     }
@@ -86,7 +83,7 @@ class AppKernel extends Kernel
 
     public function serialize()
     {
-        return serialize(array($this->varDir, $this->testCase, $this->rootConfig, $this->getEnvironment(), $this->isDebug()));
+        return serialize([$this->varDir, $this->testCase, $this->rootConfig, $this->getEnvironment(), $this->isDebug()]);
     }
 
     public function unserialize($str)
@@ -95,11 +92,20 @@ class AppKernel extends Kernel
         $this->__construct($a[0], $a[1], $a[2], $a[3], $a[4]);
     }
 
-    protected function getKernelParameters()
+    protected function getKernelParameters(): array
     {
         $parameters = parent::getKernelParameters();
         $parameters['kernel.test_case'] = $this->testCase;
 
         return $parameters;
+    }
+
+    public function getContainer(): ContainerInterface
+    {
+        if (!$this->container) {
+            throw new \LogicException('Cannot access the container on a non-booted kernel. Did you forget to boot it?');
+        }
+
+        return parent::getContainer();
     }
 }

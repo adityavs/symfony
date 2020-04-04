@@ -11,59 +11,35 @@
 
 namespace Symfony\Bundle\FrameworkBundle\Controller;
 
-use Psr\Log\LoggerInterface;
-use Symfony\Component\DependencyInjection\ContainerInterface;
 use Symfony\Component\DependencyInjection\ContainerAwareInterface;
 use Symfony\Component\HttpKernel\Controller\ContainerControllerResolver;
 
 /**
  * @author Fabien Potencier <fabien@symfony.com>
+ *
+ * @final
  */
 class ControllerResolver extends ContainerControllerResolver
 {
-    protected $parser;
-
-    public function __construct(ContainerInterface $container, ControllerNameParser $parser, LoggerInterface $logger = null)
-    {
-        $this->parser = $parser;
-
-        parent::__construct($container, $logger);
-    }
-
     /**
      * {@inheritdoc}
      */
-    protected function createController($controller)
+    protected function instantiateController($class): object
     {
-        if (false === strpos($controller, '::') && 2 === substr_count($controller, ':')) {
-            // controller in the a:b:c notation then
-            $controller = $this->parser->parse($controller);
-        }
-
-        $resolvedController = parent::createController($controller);
-
-        if (1 === substr_count($controller, ':') && is_array($resolvedController)) {
-            $resolvedController[0] = $this->configureController($resolvedController[0]);
-        }
-
-        return $resolvedController;
+        return $this->configureController(parent::instantiateController($class), $class);
     }
 
-    /**
-     * {@inheritdoc}
-     */
-    protected function instantiateController($class)
-    {
-        return $this->configureController(parent::instantiateController($class));
-    }
-
-    private function configureController($controller)
+    private function configureController($controller, string $class): object
     {
         if ($controller instanceof ContainerAwareInterface) {
             $controller->setContainer($this->container);
         }
-        if ($controller instanceof AbstractController && null !== $previousContainer = $controller->setContainer($this->container)) {
-            $controller->setContainer($previousContainer);
+        if ($controller instanceof AbstractController) {
+            if (null === $previousContainer = $controller->setContainer($this->container)) {
+                throw new \LogicException(sprintf('"%s" has no container set, did you forget to define it as a service subscriber?', $class));
+            } else {
+                $controller->setContainer($previousContainer);
+            }
         }
 
         return $controller;

@@ -11,6 +11,7 @@
 
 namespace Symfony\Component\Validator\Tests\Constraints;
 
+use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\Constraints\NotIdenticalTo;
 use Symfony\Component\Validator\Constraints\NotIdenticalToValidator;
 
@@ -24,12 +25,12 @@ class NotIdenticalToValidatorTest extends AbstractComparisonValidatorTestCase
         return new NotIdenticalToValidator();
     }
 
-    protected function createConstraint(array $options = null)
+    protected function createConstraint(array $options = null): Constraint
     {
         return new NotIdenticalTo($options);
     }
 
-    protected function getErrorCode()
+    protected function getErrorCode(): ?string
     {
         return NotIdenticalTo::IS_IDENTICAL_ERROR;
     }
@@ -37,33 +38,33 @@ class NotIdenticalToValidatorTest extends AbstractComparisonValidatorTestCase
     /**
      * {@inheritdoc}
      */
-    public function provideValidComparisons()
+    public function provideValidComparisons(): array
     {
-        return array(
-            array(1, 2),
-            array('2', 2),
-            array('22', '333'),
-            array(new \DateTime('2001-01-01'), new \DateTime('2000-01-01')),
-            array(new \DateTime('2000-01-01'), new \DateTime('2000-01-01')),
-            array(new \DateTime('2001-01-01'), '2000-01-01'),
-            array(new \DateTime('2000-01-01'), '2000-01-01'),
-            array(new \DateTime('2001-01-01'), '2000-01-01'),
-            array(new \DateTime('2000-01-01 UTC'), '2000-01-01 UTC'),
-            array(null, 1),
-        );
+        return [
+            [1, 2],
+            ['2', 2],
+            ['22', '333'],
+            [new \DateTime('2001-01-01'), new \DateTime('2000-01-01')],
+            [new \DateTime('2000-01-01'), new \DateTime('2000-01-01')],
+            [new \DateTime('2001-01-01'), '2000-01-01'],
+            [new \DateTime('2000-01-01'), '2000-01-01'],
+            [new \DateTime('2001-01-01'), '2000-01-01'],
+            [new \DateTime('2000-01-01 UTC'), '2000-01-01 UTC'],
+            [null, 1],
+        ];
     }
 
     /**
      * {@inheritdoc}
      */
-    public function provideValidComparisonsToPropertyPath()
+    public function provideValidComparisonsToPropertyPath(): array
     {
-        return array(
-            array(0),
-        );
+        return [
+            [0],
+        ];
     }
 
-    public function provideAllInvalidComparisons()
+    public function provideAllInvalidComparisons(): array
     {
         $this->setDefaultTimezone('UTC');
 
@@ -79,18 +80,25 @@ class NotIdenticalToValidatorTest extends AbstractComparisonValidatorTestCase
     /**
      * {@inheritdoc}
      */
-    public function provideInvalidComparisons()
+    public function provideInvalidComparisons(): array
     {
         $date = new \DateTime('2000-01-01');
         $object = new ComparisonTest_Class(2);
 
-        $comparisons = array(
-            array(3, '3', 3, '3', 'integer'),
-            array('a', '"a"', 'a', '"a"', 'string'),
-            array($date, 'Jan 1, 2000, 12:00 AM', $date, 'Jan 1, 2000, 12:00 AM', 'DateTime'),
-            array($object, '2', $object, '2', __NAMESPACE__.'\ComparisonTest_Class'),
-        );
+        $comparisons = [
+            [3, '3', 3, '3', 'int'],
+            ['a', '"a"', 'a', '"a"', 'string'],
+            [$date, 'Jan 1, 2000, 12:00 AM', $date, 'Jan 1, 2000, 12:00 AM', 'DateTime'],
+            [$object, '2', $object, '2', __NAMESPACE__.'\ComparisonTest_Class'],
+        ];
 
         return $comparisons;
+    }
+
+    public function provideComparisonsToNullValueAtPropertyPath()
+    {
+        return [
+            [5, '5', true],
+        ];
     }
 }

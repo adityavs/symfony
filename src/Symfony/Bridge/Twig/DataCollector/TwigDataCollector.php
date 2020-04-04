@@ -11,11 +11,12 @@
 
 namespace Symfony\Bridge\Twig\DataCollector;
 
-use Symfony\Component\HttpKernel\DataCollector\DataCollector;
-use Symfony\Component\HttpKernel\DataCollector\LateDataCollectorInterface;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\DataCollector\DataCollector;
+use Symfony\Component\HttpKernel\DataCollector\LateDataCollectorInterface;
 use Twig\Environment;
+use Twig\Error\LoaderError;
 use Twig\Markup;
 use Twig\Profiler\Dumper\HtmlDumper;
 use Twig\Profiler\Profile;
@@ -24,6 +25,8 @@ use Twig\Profiler\Profile;
  * TwigDataCollector.
  *
  * @author Fabien Potencier <fabien@symfony.com>
+ *
+ * @final
  */
 class TwigDataCollector extends DataCollector implements LateDataCollectorInterface
 {
@@ -40,7 +43,7 @@ class TwigDataCollector extends DataCollector implements LateDataCollectorInterf
     /**
      * {@inheritdoc}
      */
-    public function collect(Request $request, Response $response, \Exception $exception = null)
+    public function collect(Request $request, Response $response, \Throwable $exception = null)
     {
     }
 
@@ -51,7 +54,7 @@ class TwigDataCollector extends DataCollector implements LateDataCollectorInterf
     {
         $this->profile->reset();
         $this->computed = null;
-        $this->data = array();
+        $this->data = [];
     }
 
     /**
@@ -60,7 +63,7 @@ class TwigDataCollector extends DataCollector implements LateDataCollectorInterf
     public function lateCollect()
     {
         $this->data['profile'] = serialize($this->profile);
-        $this->data['template_paths'] = array();
+        $this->data['template_paths'] = [];
 
         if (null === $this->twig) {
             return;
@@ -70,7 +73,7 @@ class TwigDataCollector extends DataCollector implements LateDataCollectorInterf
             if ($profile->isTemplate()) {
                 try {
                     $template = $this->twig->load($name = $profile->getName());
-                } catch (\Twig_Error_Loader $e) {
+                } catch (LoaderError $e) {
                     $template = null;
                 }
 
@@ -122,15 +125,17 @@ class TwigDataCollector extends DataCollector implements LateDataCollectorInterf
         $dump = $dumper->dump($this->getProfile());
 
         // needed to remove the hardcoded CSS styles
-        $dump = str_replace(array(
+        $dump = str_replace([
             '<span style="background-color: #ffd">',
             '<span style="color: #d44">',
             '<span style="background-color: #dfd">',
-        ), array(
+            '<span style="background-color: #ddf">',
+        ], [
             '<span class="status-warning">',
             '<span class="status-error">',
             '<span class="status-success">',
-        ), $dump);
+            '<span class="status-info">',
+        ], $dump);
 
         return new Markup($dump, 'UTF-8');
     }
@@ -138,13 +143,13 @@ class TwigDataCollector extends DataCollector implements LateDataCollectorInterf
     public function getProfile()
     {
         if (null === $this->profile) {
-            $this->profile = unserialize($this->data['profile'], array('allowed_classes' => array('Twig_Profiler_Profile', 'Twig\Profiler\Profile')));
+            $this->profile = unserialize($this->data['profile'], ['allowed_classes' => ['Twig_Profiler_Profile', 'Twig\Profiler\Profile']]);
         }
 
         return $this->profile;
     }
 
-    private function getComputedData($index)
+    private function getComputedData(string $index)
     {
         if (null === $this->computed) {
             $this->computed = $this->computeData($this->getProfile());
@@ -155,13 +160,13 @@ class TwigDataCollector extends DataCollector implements LateDataCollectorInterf
 
     private function computeData(Profile $profile)
     {
-        $data = array(
+        $data = [
             'template_count' => 0,
             'block_count' => 0,
             'macro_count' => 0,
-        );
+        ];
 
-        $templates = array();
+        $templates = [];
         foreach ($profile as $p) {
             $d = $this->computeData($p);
 

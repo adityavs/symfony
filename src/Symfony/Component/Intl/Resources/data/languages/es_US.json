@@ -1,5 +1,5 @@
 {
-    "Version": "2.1.37.22",
+    "Version": "36.1",
     "Names": {
         "ace": "acehnés",
         "alt": "altái meridional",
@@ -11,13 +11,20 @@
         "bua": "buriat",
         "dum": "neerlandés medieval",
         "enm": "inglés medieval",
+        "eu": "euskera",
         "frm": "francés medieval",
+        "gan": "gan (China)",
         "gmh": "alemán de la alta edad media",
         "grc": "griego antiguo",
         "gu": "gurayatí",
         "hak": "hak",
+        "hil": "hiligainón",
+        "hsn": "xiang (China)",
+        "ht": "criollo haitiano",
+        "inh": "ingusetio",
         "kbd": "kabardiano",
         "krc": "karachay-balkar",
+        "lo": "lao",
         "lus": "lushai",
         "mga": "irlandés medieval",
         "nan": "nan",
@@ -30,7 +37,6 @@
         "sma": "sami meridional",
         "ss": "siswati",
         "st": "sesotho meridional",
-        "sw_CD": "swahili del Congo",
         "syr": "siriaco",
         "tet": "tetún",
         "tn": "setchwana",
@@ -38,5 +44,11 @@
         "wo": "wolof",
         "wuu": "wuu",
         "xal": "kalmyk"
+    },
+    "LocalizedNames": {
+        "nl_BE": "flamenco",
+        "sw_CD": "swahili del Congo",
+        "zh_Hans": "chino simplificado",
+        "zh_Hant": "chino tradicional"
     }
 }

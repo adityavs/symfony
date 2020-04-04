@@ -12,6 +12,8 @@
 namespace Symfony\Bundle\SecurityBundle\Command;
 
 use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Exception\InvalidArgumentException;
+use Symfony\Component\Console\Exception\RuntimeException;
 use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
@@ -27,7 +29,7 @@ use Symfony\Component\Security\Core\Encoder\SelfSaltingEncoderInterface;
  *
  * @author Sarah Khalil <mkhalil.sarah@gmail.com>
  *
- * @final since version 3.4
+ * @final
  */
 class UserPasswordEncoderCommand extends Command
 {
@@ -36,7 +38,7 @@ class UserPasswordEncoderCommand extends Command
     private $encoderFactory;
     private $userClasses;
 
-    public function __construct(EncoderFactoryInterface $encoderFactory, array $userClasses = array())
+    public function __construct(EncoderFactoryInterface $encoderFactory, array $userClasses = [])
     {
         $this->encoderFactory = $encoderFactory;
         $this->userClasses = $userClasses;
@@ -68,7 +70,7 @@ Suppose that you have the following security configuration in your application:
 security:
     encoders:
         Symfony\Component\Security\Core\User\User: plaintext
-        AppBundle\Entity\User: bcrypt
+        App\Entity\User: auto
 </comment>
 
 If you execute the command non-interactively, the first available configured
@@ -80,16 +82,16 @@ generated to encode the password:
 Pass the full user class path as the second argument to encode passwords for
 your own entities:
 
-  <info>php %command.full_name% --no-interaction [password] AppBundle\Entity\User</info>
+  <info>php %command.full_name% --no-interaction [password] 'App\Entity\User'</info>
 
 Executing the command interactively allows you to generate a random salt for
 encoding the password:
 
-  <info>php %command.full_name% [password] AppBundle\Entity\User</info>
+  <info>php %command.full_name% [password] 'App\Entity\User'</info>
 
 In case your encoder doesn't require a salt, add the <comment>empty-salt</comment> option:
 
-  <info>php %command.full_name% --empty-salt [password] AppBundle\Entity\User</info>
+  <info>php %command.full_name% --empty-salt [password] 'App\Entity\User'</info>
 
 EOF
             )
@@ -99,7 +101,7 @@ EOF
     /**
      * {@inheritdoc}
      */
-    protected function execute(InputInterface $input, OutputInterface $output)
+    protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $io = new SymfonyStyle($input, $output);
         $errorIo = $output instanceof ConsoleOutputInterface ? new SymfonyStyle($input, $output->getErrorOutput()) : $io;
@@ -144,22 +146,24 @@ EOF
 
         $encodedPassword = $encoder->encodePassword($password, $salt);
 
-        $rows = array(
-            array('Encoder used', get_class($encoder)),
-            array('Encoded password', $encodedPassword),
-        );
+        $rows = [
+            ['Encoder used', \get_class($encoder)],
+            ['Encoded password', $encodedPassword],
+        ];
         if (!$emptySalt) {
-            $rows[] = array('Generated salt', $salt);
+            $rows[] = ['Generated salt', $salt];
         }
-        $io->table(array('Key', 'Value'), $rows);
+        $io->table(['Key', 'Value'], $rows);
 
         if (!$emptySalt) {
-            $errorIo->note(sprintf('Make sure that your salt storage field fits the salt length: %s chars', strlen($salt)));
+            $errorIo->note(sprintf('Make sure that your salt storage field fits the salt length: %s chars', \strlen($salt)));
         } elseif ($saltlessWithoutEmptySalt) {
             $errorIo->note('Self-salting encoder used: the encoder generated its own built-in salt.');
         }
 
         $errorIo->success('Password encoding succeeded');
+
+        return 0;
     }
 
     /**
@@ -171,29 +175,29 @@ EOF
 
         return $passwordQuestion->setValidator(function ($value) {
             if ('' === trim($value)) {
-                throw new \Exception('The password must not be empty.');
+                throw new InvalidArgumentException('The password must not be empty.');
             }
 
             return $value;
         })->setHidden(true)->setMaxAttempts(20);
     }
 
-    private function generateSalt()
+    private function generateSalt(): string
     {
         return base64_encode(random_bytes(30));
     }
 
-    private function getUserClass(InputInterface $input, SymfonyStyle $io)
+    private function getUserClass(InputInterface $input, SymfonyStyle $io): string
     {
         if (null !== $userClass = $input->getArgument('user-class')) {
             return $userClass;
         }
 
         if (empty($this->userClasses)) {
-            throw new \RuntimeException('There are no configured encoders for the "security" extension.');
+            throw new RuntimeException('There are no configured encoders for the "security" extension.');
         }
 
-        if (!$input->isInteractive() || 1 === count($this->userClasses)) {
+        if (!$input->isInteractive() || 1 === \count($this->userClasses)) {
             return reset($this->userClasses);
         }
 

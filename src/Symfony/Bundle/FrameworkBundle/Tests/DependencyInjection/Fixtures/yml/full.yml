@@ -16,6 +16,7 @@ framework:
     router:
         resource:     '%kernel.project_dir%/config/routing.xml'
         type:         xml
+        utf8:         true
     session:
         storage_id:      session.storage.native
         handler_id:      session.handler.native_file
@@ -29,21 +30,18 @@ framework:
         gc_probability:  1
         gc_divisor:      108
         gc_maxlifetime:  90000
+        sid_length:      22
+        sid_bits_per_character: 4
         save_path:       /path/to/sessions
-    templating:
-        engines:          [php, twig]
-        loader:           [loader.foo, loader.bar]
-        cache:            /path/to/cache
-        form:
-            resources:    [theme1, theme2]
-        hinclude_default_template: global_hinclude_template
     assets:
         version: v1
     translator:
         enabled:  true
         fallback: fr
         default_path: '%kernel.project_dir%/translations'
+        cache_dir: '%kernel.cache_dir%/translations'
         paths: ['%kernel.project_dir%/Fixtures/translations']
+        enabled_locales: [fr, en]
     validation:
         enabled: true
     annotations:
@@ -51,9 +49,11 @@ framework:
         debug:   true
         file_cache_dir: '%kernel.cache_dir%/annotations'
     serializer:
-         enabled:        true
-         enable_annotations: true
-         name_converter: serializer.name_converter.camel_case_to_snake_case
+         enabled:                    true
+         enable_annotations:         true
+         name_converter:             serializer.name_converter.camel_case_to_snake_case
+         circular_reference_handler: my.circular.reference.handler
+         max_depth_handler:          my.max.depth.handler
     property_info: ~
     ide: file%%link%%format
     request:

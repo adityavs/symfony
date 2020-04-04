@@ -12,6 +12,8 @@
 namespace Symfony\Component\PropertyAccess;
 
 use Psr\Cache\CacheItemPoolInterface;
+use Symfony\Component\PropertyInfo\PropertyReadInfoExtractorInterface;
+use Symfony\Component\PropertyInfo\PropertyWriteInfoExtractorInterface;
 
 /**
  * A configurable builder to create a PropertyAccessor.
@@ -22,11 +24,22 @@ class PropertyAccessorBuilder
 {
     private $magicCall = false;
     private $throwExceptionOnInvalidIndex = false;
+    private $throwExceptionOnInvalidPropertyPath = true;
 
     /**
      * @var CacheItemPoolInterface|null
      */
     private $cacheItemPool;
+
+    /**
+     * @var PropertyReadInfoExtractorInterface|null
+     */
+    private $readInfoExtractor;
+
+    /**
+     * @var PropertyWriteInfoExtractorInterface|null
+     */
+    private $writeInfoExtractor;
 
     /**
      * Enables the use of "__call" by the PropertyAccessor.
@@ -98,9 +111,44 @@ class PropertyAccessorBuilder
     }
 
     /**
-     * Sets a cache system.
+     * Enables exceptions when reading a non-existing property.
      *
-     * @param CacheItemPoolInterface|null $cacheItemPool
+     * This has no influence on writing non-existing indices with PropertyAccessorInterface::setValue()
+     * which are always created on-the-fly.
+     *
+     * @return $this
+     */
+    public function enableExceptionOnInvalidPropertyPath()
+    {
+        $this->throwExceptionOnInvalidPropertyPath = true;
+
+        return $this;
+    }
+
+    /**
+     * Disables exceptions when reading a non-existing index.
+     *
+     * Instead, null is returned when calling PropertyAccessorInterface::getValue() on a non-existing index.
+     *
+     * @return $this
+     */
+    public function disableExceptionOnInvalidPropertyPath()
+    {
+        $this->throwExceptionOnInvalidPropertyPath = false;
+
+        return $this;
+    }
+
+    /**
+     * @return bool whether an exception is thrown or null is returned when reading a non-existing property
+     */
+    public function isExceptionOnInvalidPropertyPath()
+    {
+        return $this->throwExceptionOnInvalidPropertyPath;
+    }
+
+    /**
+     * Sets a cache system.
      *
      * @return PropertyAccessorBuilder The builder object
      */
@@ -122,12 +170,42 @@ class PropertyAccessorBuilder
     }
 
     /**
+     * @return $this
+     */
+    public function setReadInfoExtractor(?PropertyReadInfoExtractorInterface $readInfoExtractor)
+    {
+        $this->readInfoExtractor = $readInfoExtractor;
+
+        return $this;
+    }
+
+    public function getReadInfoExtractor(): ?PropertyReadInfoExtractorInterface
+    {
+        return $this->readInfoExtractor;
+    }
+
+    /**
+     * @return $this
+     */
+    public function setWriteInfoExtractor(?PropertyWriteInfoExtractorInterface $writeInfoExtractor)
+    {
+        $this->writeInfoExtractor = $writeInfoExtractor;
+
+        return $this;
+    }
+
+    public function getWriteInfoExtractor(): ?PropertyWriteInfoExtractorInterface
+    {
+        return $this->writeInfoExtractor;
+    }
+
+    /**
      * Builds and returns a new PropertyAccessor object.
      *
      * @return PropertyAccessorInterface The built PropertyAccessor
      */
     public function getPropertyAccessor()
     {
-        return new PropertyAccessor($this->magicCall, $this->throwExceptionOnInvalidIndex, $this->cacheItemPool);
+        return new PropertyAccessor($this->magicCall, $this->throwExceptionOnInvalidIndex, $this->cacheItemPool, $this->throwExceptionOnInvalidPropertyPath, $this->readInfoExtractor, $this->writeInfoExtractor);
     }
 }

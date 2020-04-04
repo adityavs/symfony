@@ -11,17 +11,20 @@
 
 namespace Symfony\Component\Validator\Context;
 
-use Symfony\Component\Translation\TranslatorInterface;
 use Symfony\Component\Validator\Constraint;
 use Symfony\Component\Validator\ConstraintViolation;
 use Symfony\Component\Validator\ConstraintViolationList;
+use Symfony\Component\Validator\ConstraintViolationListInterface;
 use Symfony\Component\Validator\Mapping\ClassMetadataInterface;
-use Symfony\Component\Validator\Mapping\MetadataInterface;
 use Symfony\Component\Validator\Mapping\MemberMetadata;
+use Symfony\Component\Validator\Mapping\MetadataInterface;
 use Symfony\Component\Validator\Mapping\PropertyMetadataInterface;
 use Symfony\Component\Validator\Util\PropertyPath;
+use Symfony\Component\Validator\Validator\LazyProperty;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 use Symfony\Component\Validator\Violation\ConstraintViolationBuilder;
+use Symfony\Component\Validator\Violation\ConstraintViolationBuilderInterface;
+use Symfony\Contracts\Translation\TranslatorInterface;
 
 /**
  * The context used and created by {@link ExecutionContextFactory}.
@@ -110,14 +113,14 @@ class ExecutionContext implements ExecutionContextInterface
      *
      * @var array
      */
-    private $validatedObjects = array();
+    private $validatedObjects = [];
 
     /**
      * Stores which class constraint has been validated for which object.
      *
      * @var array
      */
-    private $validatedConstraints = array();
+    private $validatedConstraints = [];
 
     /**
      * Stores which objects have been initialized.
@@ -127,18 +130,9 @@ class ExecutionContext implements ExecutionContextInterface
     private $initializedObjects;
 
     /**
-     * Creates a new execution context.
+     * @param mixed $root The root value of the validated object graph
      *
-     * @param ValidatorInterface  $validator         The validator
-     * @param mixed               $root              The root value of the
-     *                                               validated object graph
-     * @param TranslatorInterface $translator        The translator
-     * @param string|null         $translationDomain The translation domain to
-     *                                               use for translating
-     *                                               violation messages
-     *
-     * @internal Called by {@link ExecutionContextFactory}. Should not be used
-     *           in user code.
+     * @internal Called by {@link ExecutionContextFactory}. Should not be used in user code.
      */
     public function __construct(ValidatorInterface $validator, $root, TranslatorInterface $translator, string $translationDomain = null)
     {
@@ -152,7 +146,7 @@ class ExecutionContext implements ExecutionContextInterface
     /**
      * {@inheritdoc}
      */
-    public function setNode($value, $object, MetadataInterface $metadata = null, $propertyPath)
+    public function setNode($value, ?object $object, MetadataInterface $metadata = null, string $propertyPath)
     {
         $this->value = $value;
         $this->object = $object;
@@ -163,7 +157,7 @@ class ExecutionContext implements ExecutionContextInterface
     /**
      * {@inheritdoc}
      */
-    public function setGroup($group)
+    public function setGroup(?string $group)
     {
         $this->group = $group;
     }
@@ -179,7 +173,7 @@ class ExecutionContext implements ExecutionContextInterface
     /**
      * {@inheritdoc}
      */
-    public function addViolation($message, array $parameters = array())
+    public function addViolation(string $message, array $parameters = [])
     {
         $this->violations->add(new ConstraintViolation(
             $this->translator->trans($message, $parameters, $this->translationDomain),
@@ -187,7 +181,7 @@ class ExecutionContext implements ExecutionContextInterface
             $parameters,
             $this->root,
             $this->propertyPath,
-            $this->value,
+            $this->getValue(),
             null,
             null,
             $this->constraint
@@ -197,7 +191,7 @@ class ExecutionContext implements ExecutionContextInterface
     /**
      * {@inheritdoc}
      */
-    public function buildViolation($message, array $parameters = array())
+    public function buildViolation(string $message, array $parameters = []): ConstraintViolationBuilderInterface
     {
         return new ConstraintViolationBuilder(
             $this->violations,
@@ -206,7 +200,7 @@ class ExecutionContext implements ExecutionContextInterface
             $parameters,
             $this->root,
             $this->propertyPath,
-            $this->value,
+            $this->getValue(),
             $this->translator,
             $this->translationDomain
         );
@@ -215,7 +209,7 @@ class ExecutionContext implements ExecutionContextInterface
     /**
      * {@inheritdoc}
      */
-    public function getViolations()
+    public function getViolations(): ConstraintViolationListInterface
     {
         return $this->violations;
     }
@@ -223,7 +217,7 @@ class ExecutionContext implements ExecutionContextInterface
     /**
      * {@inheritdoc}
      */
-    public function getValidator()
+    public function getValidator(): ValidatorInterface
     {
         return $this->validator;
     }
@@ -241,6 +235,10 @@ class ExecutionContext implements ExecutionContextInterface
      */
     public function getValue()
     {
+        if ($this->value instanceof LazyProperty) {
+            return $this->value->getPropertyValue();
+        }
+
         return $this->value;
     }
 
@@ -255,7 +253,7 @@ class ExecutionContext implements ExecutionContextInterface
     /**
      * {@inheritdoc}
      */
-    public function getMetadata()
+    public function getMetadata(): ?MetadataInterface
     {
         return $this->metadata;
     }
@@ -263,12 +261,12 @@ class ExecutionContext implements ExecutionContextInterface
     /**
      * {@inheritdoc}
      */
-    public function getGroup()
+    public function getGroup(): ?string
     {
         return $this->group;
     }
 
-    public function getConstraint()
+    public function getConstraint(): ?Constraint
     {
         return $this->constraint;
     }
@@ -276,7 +274,7 @@ class ExecutionContext implements ExecutionContextInterface
     /**
      * {@inheritdoc}
      */
-    public function getClassName()
+    public function getClassName(): ?string
     {
         return $this->metadata instanceof MemberMetadata || $this->metadata instanceof ClassMetadataInterface ? $this->metadata->getClassName() : null;
     }
@@ -284,7 +282,7 @@ class ExecutionContext implements ExecutionContextInterface
     /**
      * {@inheritdoc}
      */
-    public function getPropertyName()
+    public function getPropertyName(): ?string
     {
         return $this->metadata instanceof PropertyMetadataInterface ? $this->metadata->getPropertyName() : null;
     }
@@ -292,7 +290,7 @@ class ExecutionContext implements ExecutionContextInterface
     /**
      * {@inheritdoc}
      */
-    public function getPropertyPath($subPath = '')
+    public function getPropertyPath(string $subPath = ''): string
     {
         return PropertyPath::append($this->propertyPath, $subPath);
     }
@@ -300,10 +298,10 @@ class ExecutionContext implements ExecutionContextInterface
     /**
      * {@inheritdoc}
      */
-    public function markGroupAsValidated($cacheKey, $groupHash)
+    public function markGroupAsValidated(string $cacheKey, string $groupHash)
     {
         if (!isset($this->validatedObjects[$cacheKey])) {
-            $this->validatedObjects[$cacheKey] = array();
+            $this->validatedObjects[$cacheKey] = [];
         }
 
         $this->validatedObjects[$cacheKey][$groupHash] = true;
@@ -312,7 +310,7 @@ class ExecutionContext implements ExecutionContextInterface
     /**
      * {@inheritdoc}
      */
-    public function isGroupValidated($cacheKey, $groupHash)
+    public function isGroupValidated(string $cacheKey, string $groupHash): bool
     {
         return isset($this->validatedObjects[$cacheKey][$groupHash]);
     }
@@ -320,7 +318,7 @@ class ExecutionContext implements ExecutionContextInterface
     /**
      * {@inheritdoc}
      */
-    public function markConstraintAsValidated($cacheKey, $constraintHash)
+    public function markConstraintAsValidated(string $cacheKey, string $constraintHash)
     {
         $this->validatedConstraints[$cacheKey.':'.$constraintHash] = true;
     }
@@ -328,7 +326,7 @@ class ExecutionContext implements ExecutionContextInterface
     /**
      * {@inheritdoc}
      */
-    public function isConstraintValidated($cacheKey, $constraintHash)
+    public function isConstraintValidated(string $cacheKey, string $constraintHash): bool
     {
         return isset($this->validatedConstraints[$cacheKey.':'.$constraintHash]);
     }
@@ -336,7 +334,7 @@ class ExecutionContext implements ExecutionContextInterface
     /**
      * {@inheritdoc}
      */
-    public function markObjectAsInitialized($cacheKey)
+    public function markObjectAsInitialized(string $cacheKey)
     {
         $this->initializedObjects[$cacheKey] = true;
     }
@@ -344,7 +342,7 @@ class ExecutionContext implements ExecutionContextInterface
     /**
      * {@inheritdoc}
      */
-    public function isObjectInitialized($cacheKey)
+    public function isObjectInitialized(string $cacheKey): bool
     {
         return isset($this->initializedObjects[$cacheKey]);
     }

@@ -12,6 +12,8 @@
 namespace Symfony\Component\Cache\Tests\Adapter;
 
 use Psr\Cache\CacheItemInterface;
+use Psr\Cache\CacheItemPoolInterface;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\NullAdapter;
 use Symfony\Component\Cache\Adapter\PhpArrayAdapter;
 
@@ -20,7 +22,9 @@ use Symfony\Component\Cache\Adapter\PhpArrayAdapter;
  */
 class PhpArrayAdapterTest extends AdapterTestCase
 {
-    protected $skippedTests = array(
+    protected $skippedTests = [
+        'testGet' => 'PhpArrayAdapter is read-only.',
+        'testRecursiveGet' => 'PhpArrayAdapter is read-only.',
         'testBasicUsage' => 'PhpArrayAdapter is read-only.',
         'testBasicUsageWithLongKey' => 'PhpArrayAdapter is read-only.',
         'testClear' => 'PhpArrayAdapter is read-only.',
@@ -51,45 +55,51 @@ class PhpArrayAdapterTest extends AdapterTestCase
 
         'testDefaultLifeTime' => 'PhpArrayAdapter does not allow configuring a default lifetime.',
         'testPrune' => 'PhpArrayAdapter just proxies',
-    );
+    ];
 
     protected static $file;
 
-    public static function setupBeforeClass()
+    public static function setUpBeforeClass(): void
     {
         self::$file = sys_get_temp_dir().'/symfony-cache/php-array-adapter-test.php';
     }
 
-    protected function tearDown()
+    protected function tearDown(): void
     {
+        $this->createCachePool()->clear();
+
         if (file_exists(sys_get_temp_dir().'/symfony-cache')) {
             FilesystemAdapterTest::rmdir(sys_get_temp_dir().'/symfony-cache');
         }
     }
 
-    public function createCachePool()
+    public function createCachePool(int $defaultLifetime = 0, string $testMethod = null): CacheItemPoolInterface
     {
+        if ('testGetMetadata' === $testMethod || 'testClearPrefix' === $testMethod) {
+            return new PhpArrayAdapter(self::$file, new FilesystemAdapter());
+        }
+
         return new PhpArrayAdapterWrapper(self::$file, new NullAdapter());
     }
 
     public function testStore()
     {
-        $arrayWithRefs = array();
+        $arrayWithRefs = [];
         $arrayWithRefs[0] = 123;
         $arrayWithRefs[1] = &$arrayWithRefs[0];
 
-        $object = (object) array(
+        $object = (object) [
             'foo' => 'bar',
             'foo2' => 'bar2',
-        );
+        ];
 
-        $expected = array(
+        $expected = [
             'null' => null,
             'serializedString' => serialize($object),
             'arrayWithRefs' => $arrayWithRefs,
             'object' => $object,
-            'arrayWithObject' => array('bar' => $object),
-        );
+            'arrayWithObject' => ['bar' => $object],
+        ];
 
         $adapter = $this->createCachePool();
         $adapter->warmUp($expected);
@@ -101,16 +111,32 @@ class PhpArrayAdapterTest extends AdapterTestCase
 
     public function testStoredFile()
     {
-        $expected = array(
+        $data = [
             'integer' => 42,
             'float' => 42.42,
             'boolean' => true,
-            'array_simple' => array('foo', 'bar'),
-            'array_associative' => array('foo' => 'bar', 'foo2' => 'bar2'),
-        );
+            'array_simple' => ['foo', 'bar'],
+            'array_associative' => ['foo' => 'bar', 'foo2' => 'bar2'],
+        ];
+        $expected = [
+            [
+                'integer' => 0,
+                'float' => 1,
+                'boolean' => 2,
+                'array_simple' => 3,
+                'array_associative' => 4,
+            ],
+            [
+                0 => 42,
+                1 => 42.42,
+                2 => true,
+                3 => ['foo', 'bar'],
+                4 => ['foo' => 'bar', 'foo2' => 'bar2'],
+            ],
+        ];
 
         $adapter = $this->createCachePool();
-        $adapter->warmUp($expected);
+        $adapter->warmUp($data);
 
         $values = eval(substr(file_get_contents(self::$file), 6));
 
@@ -120,13 +146,17 @@ class PhpArrayAdapterTest extends AdapterTestCase
 
 class PhpArrayAdapterWrapper extends PhpArrayAdapter
 {
-    public function save(CacheItemInterface $item)
+    protected $data = [];
+
+    public function save(CacheItemInterface $item): bool
     {
-        call_user_func(\Closure::bind(function () use ($item) {
-            $this->values[$item->getKey()] = $item->get();
-            $this->warmUp($this->values);
-            $this->values = eval(substr(file_get_contents($this->file), 6));
-        }, $this, PhpArrayAdapter::class));
+        (\Closure::bind(function () use ($item) {
+            $key = $item->getKey();
+            $this->keys[$key] = $id = \count($this->values);
+            $this->data[$key] = $this->values[$id] = $item->get();
+            $this->warmUp($this->data);
+            list($this->keys, $this->values) = eval(substr(file_get_contents($this->file), 6));
+        }, $this, PhpArrayAdapter::class))();
 
         return true;
     }

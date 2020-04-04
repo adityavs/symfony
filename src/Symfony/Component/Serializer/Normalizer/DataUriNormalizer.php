@@ -12,8 +12,8 @@
 namespace Symfony\Component\Serializer\Normalizer;
 
 use Symfony\Component\HttpFoundation\File\File;
-use Symfony\Component\HttpFoundation\File\MimeType\MimeTypeGuesser;
-use Symfony\Component\HttpFoundation\File\MimeType\MimeTypeGuesserInterface;
+use Symfony\Component\Mime\MimeTypeGuesserInterface;
+use Symfony\Component\Mime\MimeTypes;
 use Symfony\Component\Serializer\Exception\InvalidArgumentException;
 use Symfony\Component\Serializer\Exception\NotNormalizableValueException;
 
@@ -23,23 +23,23 @@ use Symfony\Component\Serializer\Exception\NotNormalizableValueException;
  *
  * @author Kévin Dunglas <dunglas@gmail.com>
  */
-class DataUriNormalizer implements NormalizerInterface, DenormalizerInterface
+class DataUriNormalizer implements NormalizerInterface, DenormalizerInterface, CacheableSupportsMethodInterface
 {
-    private static $supportedTypes = array(
+    private static $supportedTypes = [
         \SplFileInfo::class => true,
         \SplFileObject::class => true,
         File::class => true,
-    );
+    ];
 
     /**
-     * @var MimeTypeGuesserInterface
+     * @var MimeTypeGuesserInterface|null
      */
     private $mimeTypeGuesser;
 
     public function __construct(MimeTypeGuesserInterface $mimeTypeGuesser = null)
     {
-        if (null === $mimeTypeGuesser && class_exists('Symfony\Component\HttpFoundation\File\MimeType\MimeTypeGuesser')) {
-            $mimeTypeGuesser = MimeTypeGuesser::getInstance();
+        if (!$mimeTypeGuesser && class_exists(MimeTypes::class)) {
+            $mimeTypeGuesser = MimeTypes::getDefault();
         }
 
         $this->mimeTypeGuesser = $mimeTypeGuesser;
@@ -48,7 +48,7 @@ class DataUriNormalizer implements NormalizerInterface, DenormalizerInterface
     /**
      * {@inheritdoc}
      */
-    public function normalize($object, $format = null, array $context = array())
+    public function normalize($object, string $format = null, array $context = [])
     {
         if (!$object instanceof \SplFileInfo) {
             throw new InvalidArgumentException('The object must be an instance of "\SplFileInfo".');
@@ -74,7 +74,7 @@ class DataUriNormalizer implements NormalizerInterface, DenormalizerInterface
     /**
      * {@inheritdoc}
      */
-    public function supportsNormalization($data, $format = null)
+    public function supportsNormalization($data, string $format = null)
     {
         return $data instanceof \SplFileInfo;
     }
@@ -89,15 +89,19 @@ class DataUriNormalizer implements NormalizerInterface, DenormalizerInterface
      * @throws InvalidArgumentException
      * @throws NotNormalizableValueException
      */
-    public function denormalize($data, $class, $format = null, array $context = array())
+    public function denormalize($data, string $type, string $format = null, array $context = [])
     {
         if (!preg_match('/^data:([a-z0-9][a-z0-9\!\#\$\&\-\^\_\+\.]{0,126}\/[a-z0-9][a-z0-9\!\#\$\&\-\^\_\+\.]{0,126}(;[a-z0-9\-]+\=[a-z0-9\-]+)?)?(;base64)?,[a-z0-9\!\$\&\\\'\,\(\)\*\+\,\;\=\-\.\_\~\:\@\/\?\%\s]*\s*$/i', $data)) {
             throw new NotNormalizableValueException('The provided "data:" URI is not valid.');
         }
 
         try {
-            switch ($class) {
+            switch ($type) {
                 case 'Symfony\Component\HttpFoundation\File\File':
+                    if (!class_exists(File::class)) {
+                        throw new InvalidArgumentException(sprintf('Cannot denormalize to a "%s" without the HttpFoundation component installed. Try running "composer require symfony/http-foundation".', File::class));
+                    }
+
                     return new File($data, false);
 
                 case 'SplFileObject':
@@ -108,31 +112,35 @@ class DataUriNormalizer implements NormalizerInterface, DenormalizerInterface
             throw new NotNormalizableValueException($exception->getMessage(), $exception->getCode(), $exception);
         }
 
-        throw new InvalidArgumentException(sprintf('The class parameter "%s" is not supported. It must be one of "SplFileInfo", "SplFileObject" or "Symfony\Component\HttpFoundation\File\File".', $class));
+        throw new InvalidArgumentException(sprintf('The class parameter "%s" is not supported. It must be one of "SplFileInfo", "SplFileObject" or "Symfony\Component\HttpFoundation\File\File".', $type));
     }
 
     /**
      * {@inheritdoc}
      */
-    public function supportsDenormalization($data, $type, $format = null)
+    public function supportsDenormalization($data, string $type, string $format = null)
     {
         return isset(self::$supportedTypes[$type]);
     }
 
     /**
-     * Gets the mime type of the object. Defaults to application/octet-stream.
-     *
-     * @param \SplFileInfo $object
-     *
-     * @return string
+     * {@inheritdoc}
      */
-    private function getMimeType(\SplFileInfo $object)
+    public function hasCacheableSupportsMethod(): bool
+    {
+        return __CLASS__ === static::class;
+    }
+
+    /**
+     * Gets the mime type of the object. Defaults to application/octet-stream.
+     */
+    private function getMimeType(\SplFileInfo $object): string
     {
         if ($object instanceof File) {
             return $object->getMimeType();
         }
 
-        if ($this->mimeTypeGuesser && $mimeType = $this->mimeTypeGuesser->guess($object->getPathname())) {
+        if ($this->mimeTypeGuesser && $mimeType = $this->mimeTypeGuesser->guessMimeType($object->getPathname())) {
             return $mimeType;
         }
 
@@ -141,12 +149,8 @@ class DataUriNormalizer implements NormalizerInterface, DenormalizerInterface
 
     /**
      * Returns the \SplFileObject instance associated with the given \SplFileInfo instance.
-     *
-     * @param \SplFileInfo $object
-     *
-     * @return \SplFileObject
      */
-    private function extractSplFileObject(\SplFileInfo $object)
+    private function extractSplFileObject(\SplFileInfo $object): \SplFileObject
     {
         if ($object instanceof \SplFileObject) {
             return $object;

@@ -12,23 +12,24 @@
 namespace Symfony\Component\Security\Http\Tests\RememberMe;
 
 use PHPUnit\Framework\TestCase;
-use Symfony\Component\HttpKernel\HttpKernelInterface;
-use Symfony\Component\Security\Http\RememberMe\ResponseListener;
-use Symfony\Component\Security\Http\RememberMe\RememberMeServicesInterface;
+use Symfony\Component\HttpFoundation\Cookie;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\Cookie;
+use Symfony\Component\HttpKernel\Event\ResponseEvent;
+use Symfony\Component\HttpKernel\HttpKernelInterface;
 use Symfony\Component\HttpKernel\KernelEvents;
+use Symfony\Component\Security\Http\RememberMe\RememberMeServicesInterface;
+use Symfony\Component\Security\Http\RememberMe\ResponseListener;
 
 class ResponseListenerTest extends TestCase
 {
     public function testRememberMeCookieIsSentWithResponse()
     {
-        $cookie = new Cookie('rememberme');
+        $cookie = new Cookie('rememberme', null, 0, '/', null, false, true, false, null);
 
-        $request = $this->getRequest(array(
+        $request = $this->getRequest([
             RememberMeServicesInterface::COOKIE_ATTR_NAME => $cookie,
-        ));
+        ]);
 
         $response = $this->getResponse();
         $response->headers->expects($this->once())->method('setCookie')->with($cookie);
@@ -39,11 +40,11 @@ class ResponseListenerTest extends TestCase
 
     public function testRememberMeCookieIsNotSendWithResponseForSubRequests()
     {
-        $cookie = new Cookie('rememberme');
+        $cookie = new Cookie('rememberme', null, 0, '/', null, false, true, false, null);
 
-        $request = $this->getRequest(array(
+        $request = $this->getRequest([
             RememberMeServicesInterface::COOKIE_ATTR_NAME => $cookie,
-        ));
+        ]);
 
         $response = $this->getResponse();
         $response->headers->expects($this->never())->method('setCookie');
@@ -65,12 +66,10 @@ class ResponseListenerTest extends TestCase
 
     public function testItSubscribesToTheOnKernelResponseEvent()
     {
-        $listener = new ResponseListener();
-
-        $this->assertSame(array(KernelEvents::RESPONSE => 'onKernelResponse'), ResponseListener::getSubscribedEvents());
+        $this->assertSame([KernelEvents::RESPONSE => 'onKernelResponse'], ResponseListener::getSubscribedEvents());
     }
 
-    private function getRequest(array $attributes = array())
+    private function getRequest(array $attributes = [])
     {
         $request = new Request();
 
@@ -89,16 +88,8 @@ class ResponseListenerTest extends TestCase
         return $response;
     }
 
-    private function getEvent($request, $response, $type = HttpKernelInterface::MASTER_REQUEST)
+    private function getEvent(Request $request, Response $response, int $type = HttpKernelInterface::MASTER_REQUEST): ResponseEvent
     {
-        $event = $this->getMockBuilder('Symfony\Component\HttpKernel\Event\FilterResponseEvent')
-            ->disableOriginalConstructor()
-            ->getMock();
-
-        $event->expects($this->any())->method('getRequest')->will($this->returnValue($request));
-        $event->expects($this->any())->method('isMasterRequest')->will($this->returnValue(HttpKernelInterface::MASTER_REQUEST === $type));
-        $event->expects($this->any())->method('getResponse')->will($this->returnValue($response));
-
-        return $event;
+        return new ResponseEvent($this->createMock(HttpKernelInterface::class), $request, $type, $response);
     }
 }

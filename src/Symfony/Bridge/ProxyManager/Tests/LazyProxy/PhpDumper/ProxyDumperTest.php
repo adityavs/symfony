@@ -14,6 +14,7 @@ namespace Symfony\Bridge\ProxyManager\Tests\LazyProxy\PhpDumper;
 use PHPUnit\Framework\TestCase;
 use Symfony\Bridge\ProxyManager\LazyProxy\PhpDumper\ProxyDumper;
 use Symfony\Component\DependencyInjection\Definition;
+use Symfony\Component\DependencyInjection\LazyProxy\PhpDumper\DumperInterface;
 
 /**
  * Tests for {@see \Symfony\Bridge\ProxyManager\LazyProxy\PhpDumper\ProxyDumper}.
@@ -30,7 +31,7 @@ class ProxyDumperTest extends TestCase
     /**
      * {@inheritdoc}
      */
-    protected function setUp()
+    protected function setUp(): void
     {
         $this->dumper = new ProxyDumper();
     }
@@ -58,6 +59,14 @@ class ProxyDumperTest extends TestCase
         );
     }
 
+    public function testDeterministicProxyCode()
+    {
+        $definition = new Definition(__CLASS__);
+        $definition->setLazy(true);
+
+        $this->assertSame($this->dumper->getProxyCode($definition), $this->dumper->getProxyCode($definition));
+    }
+
     public function testGetProxyFactoryCode()
     {
         $definition = new Definition(__CLASS__);
@@ -73,27 +82,97 @@ class ProxyDumperTest extends TestCase
     }
 
     /**
-     * @expectedException \InvalidArgumentException
-     * @expectedExceptionMessage Missing factory code to construct the service "foo".
+     * @dataProvider getPrivatePublicDefinitions
      */
-    public function testGetProxyFactoryCodeWithoutCustomMethod()
+    public function testCorrectAssigning(Definition $definition, $access)
     {
-        $definition = new Definition(__CLASS__);
         $definition->setLazy(true);
-        $this->dumper->getProxyFactoryCode($definition, 'foo');
+
+        $code = $this->dumper->getProxyFactoryCode($definition, 'foo', '$this->getFoo2Service(false)');
+
+        $this->assertStringMatchesFormat('%A$this->'.$access.'[\'foo\'] = %A', $code);
     }
 
-    /**
-     * @return array
-     */
-    public function getProxyCandidates()
+    public function getPrivatePublicDefinitions()
     {
-        $definitions = array(
-            array(new Definition(__CLASS__), true),
-            array(new Definition('stdClass'), true),
-            array(new Definition(uniqid('foo', true)), false),
-            array(new Definition(), false),
-        );
+        return [
+            [
+                (new Definition(__CLASS__))
+                    ->setPublic(false),
+                'privates',
+            ],
+            [
+                (new Definition(__CLASS__))
+                    ->setPublic(true),
+                'services',
+            ],
+        ];
+    }
+
+    public function testGetProxyFactoryCodeForInterface()
+    {
+        $class = DummyClass::class;
+        $definition = new Definition($class);
+
+        $definition->setLazy(true);
+        $definition->addTag('proxy', ['interface' => DummyInterface::class]);
+        $definition->addTag('proxy', ['interface' => SunnyInterface::class]);
+
+        $implem = "<?php\n\n".$this->dumper->getProxyCode($definition);
+        $factory = $this->dumper->getProxyFactoryCode($definition, 'foo', '$this->getFooService(false)');
+        $factory = <<<EOPHP
+<?php
+
+return new class
+{
+    public \$proxyClass;
+    private \$privates = [];
+
+    public function getFooService(\$lazyLoad = true)
+    {
+{$factory}        return new {$class}();
+    }
+
+    protected function createProxy(\$class, \Closure \$factory)
+    {
+        \$this->proxyClass = \$class;
+
+        return \$factory();
+    }
+};
+
+EOPHP;
+
+        $implem = preg_replace('#\n    /\*\*.*?\*/#s', '', $implem);
+        $implem = str_replace("array(\n        \n    );", "[\n        \n    ];", $implem);
+
+        $this->assertStringMatchesFormatFile(__DIR__.'/Fixtures/proxy-implem.php', $implem);
+        $this->assertStringEqualsFile(__DIR__.'/Fixtures/proxy-factory.php', $factory);
+
+        eval(preg_replace('/^<\?php/', '', $implem));
+        $factory = require __DIR__.'/Fixtures/proxy-factory.php';
+
+        $foo = $factory->getFooService();
+
+        $this->assertInstanceof($factory->proxyClass, $foo);
+        $this->assertInstanceof(DummyInterface::class, $foo);
+        $this->assertInstanceof(SunnyInterface::class, $foo);
+        $this->assertNotInstanceof(DummyClass::class, $foo);
+        $this->assertSame($foo, $foo->dummy());
+
+        $foo->dynamicProp = 123;
+        $this->assertSame(123, @$foo->dynamicProp);
+    }
+
+    public function getProxyCandidates(): array
+    {
+        $definitions = [
+            [new Definition(__CLASS__), true],
+            [new Definition('stdClass'), true],
+            [new Definition(DumperInterface::class), true],
+            [new Definition(uniqid('foo', true)), false],
+            [new Definition(), false],
+        ];
 
         array_map(
             function ($definition) {
@@ -104,4 +183,35 @@ class ProxyDumperTest extends TestCase
 
         return $definitions;
     }
+}
+
+final class DummyClass implements DummyInterface, SunnyInterface
+{
+    public function dummy()
+    {
+        return $this;
+    }
+
+    public function sunny()
+    {
+    }
+
+    public function &dummyRef()
+    {
+        return $this->ref;
+    }
+}
+
+interface DummyInterface
+{
+    public function dummy();
+
+    public function &dummyRef();
+}
+
+interface SunnyInterface
+{
+    public function dummy();
+
+    public function sunny();
 }

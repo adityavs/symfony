@@ -12,8 +12,12 @@
 namespace Symfony\Bundle\FrameworkBundle\Tests\Functional\app;
 
 use Psr\Log\NullLogger;
+use Symfony\Component\Config\Definition\Builder\TreeBuilder;
+use Symfony\Component\Config\Definition\ConfigurationInterface;
 use Symfony\Component\Config\Loader\LoaderInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface;
+use Symfony\Component\DependencyInjection\Extension\ExtensionInterface;
 use Symfony\Component\Filesystem\Filesystem;
 use Symfony\Component\HttpKernel\Kernel;
 
@@ -22,7 +26,7 @@ use Symfony\Component\HttpKernel\Kernel;
  *
  * @author Johannes M. Schmitt <schmittjoh@gmail.com>
  */
-class AppKernel extends Kernel
+class AppKernel extends Kernel implements ExtensionInterface, ConfigurationInterface
 {
     private $varDir;
     private $testCase;
@@ -45,26 +49,26 @@ class AppKernel extends Kernel
         parent::__construct($environment, $debug);
     }
 
-    public function registerBundles()
+    public function registerBundles(): iterable
     {
-        if (!file_exists($filename = $this->getRootDir().'/'.$this->testCase.'/bundles.php')) {
+        if (!file_exists($filename = $this->getProjectDir().'/'.$this->testCase.'/bundles.php')) {
             throw new \RuntimeException(sprintf('The bundles file "%s" does not exist.', $filename));
         }
 
         return include $filename;
     }
 
-    public function getRootDir()
+    public function getProjectDir(): string
     {
         return __DIR__;
     }
 
-    public function getCacheDir()
+    public function getCacheDir(): string
     {
         return sys_get_temp_dir().'/'.$this->varDir.'/'.$this->testCase.'/cache/'.$this->environment;
     }
 
-    public function getLogDir()
+    public function getLogDir(): string
     {
         return sys_get_temp_dir().'/'.$this->varDir.'/'.$this->testCase.'/logs';
     }
@@ -79,22 +83,58 @@ class AppKernel extends Kernel
         $container->register('logger', NullLogger::class);
     }
 
-    public function serialize()
+    public function __sleep(): array
     {
-        return serialize(array($this->varDir, $this->testCase, $this->rootConfig, $this->getEnvironment(), $this->isDebug()));
+        return ['varDir', 'testCase', 'rootConfig', 'environment', 'debug'];
     }
 
-    public function unserialize($str)
+    public function __wakeup()
     {
-        $a = unserialize($str);
-        $this->__construct($a[0], $a[1], $a[2], $a[3], $a[4]);
+        $this->__construct($this->varDir, $this->testCase, $this->rootConfig, $this->environment, $this->debug);
     }
 
-    protected function getKernelParameters()
+    protected function getKernelParameters(): array
     {
         $parameters = parent::getKernelParameters();
         $parameters['kernel.test_case'] = $this->testCase;
 
         return $parameters;
+    }
+
+    public function getContainer(): ContainerInterface
+    {
+        if (!$this->container) {
+            throw new \LogicException('Cannot access the container on a non-booted kernel. Did you forget to boot it?');
+        }
+
+        return parent::getContainer();
+    }
+
+    public function getConfigTreeBuilder()
+    {
+        $treeBuilder = new TreeBuilder('foo');
+        $rootNode = $treeBuilder->getRootNode();
+        $rootNode->children()->scalarNode('foo')->defaultValue('bar')->end()->end();
+
+        return $treeBuilder;
+    }
+
+    public function load(array $configs, ContainerBuilder $container)
+    {
+    }
+
+    public function getNamespace()
+    {
+        return '';
+    }
+
+    public function getXsdValidationBasePath()
+    {
+        return false;
+    }
+
+    public function getAlias()
+    {
+        return 'foo';
     }
 }

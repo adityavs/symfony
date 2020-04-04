@@ -11,7 +11,7 @@
 
 namespace Symfony\Component\Workflow;
 
-use Symfony\Component\Workflow\Exception\InvalidArgumentException;
+use Symfony\Component\Workflow\Metadata\MetadataStoreInterface;
 
 /**
  * Builds a definition.
@@ -22,15 +22,16 @@ use Symfony\Component\Workflow\Exception\InvalidArgumentException;
  */
 class DefinitionBuilder
 {
-    private $places = array();
-    private $transitions = array();
-    private $initialPlace;
+    private $places = [];
+    private $transitions = [];
+    private $initialPlaces;
+    private $metadataStore;
 
     /**
      * @param string[]     $places
      * @param Transition[] $transitions
      */
-    public function __construct(array $places = array(), array $transitions = array())
+    public function __construct(array $places = [], array $transitions = [])
     {
         $this->addPlaces($places);
         $this->addTransitions($transitions);
@@ -41,7 +42,7 @@ class DefinitionBuilder
      */
     public function build()
     {
-        return new Definition($this->places, $this->transitions, $this->initialPlace);
+        return new Definition($this->places, $this->transitions, $this->initialPlaces, $this->metadataStore);
     }
 
     /**
@@ -49,40 +50,35 @@ class DefinitionBuilder
      *
      * @return $this
      */
-    public function reset()
+    public function clear()
     {
-        $this->places = array();
-        $this->transitions = array();
-        $this->initialPlace = null;
+        $this->places = [];
+        $this->transitions = [];
+        $this->initialPlaces = null;
+        $this->metadataStore = null;
 
         return $this;
     }
 
     /**
-     * @param string $place
+     * @param string|string[]|null $initialPlaces
      *
      * @return $this
      */
-    public function setInitialPlace($place)
+    public function setInitialPlaces($initialPlaces)
     {
-        $this->initialPlace = $place;
+        $this->initialPlaces = $initialPlaces;
 
         return $this;
     }
 
     /**
-     * @param string $place
-     *
      * @return $this
      */
-    public function addPlace($place)
+    public function addPlace(string $place)
     {
-        if (!preg_match('{^[\w_-]+$}', $place)) {
-            throw new InvalidArgumentException(sprintf('The place "%s" contains invalid characters.', $place));
-        }
-
         if (!$this->places) {
-            $this->initialPlace = $place;
+            $this->initialPlaces = $place;
         }
 
         $this->places[$place] = $place;
@@ -124,6 +120,16 @@ class DefinitionBuilder
     public function addTransition(Transition $transition)
     {
         $this->transitions[] = $transition;
+
+        return $this;
+    }
+
+    /**
+     * @return $this
+     */
+    public function setMetadataStore(MetadataStoreInterface $metadataStore)
+    {
+        $this->metadataStore = $metadataStore;
 
         return $this;
     }

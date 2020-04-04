@@ -11,50 +11,50 @@
 
 namespace Symfony\Bundle\FrameworkBundle\HttpCache;
 
-use Symfony\Component\HttpKernel\HttpKernelInterface;
-use Symfony\Component\HttpKernel\HttpCache\HttpCache as BaseHttpCache;
-use Symfony\Component\HttpKernel\HttpCache\Esi;
-use Symfony\Component\HttpKernel\HttpCache\Store;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpKernel\HttpCache\Esi;
+use Symfony\Component\HttpKernel\HttpCache\HttpCache as BaseHttpCache;
+use Symfony\Component\HttpKernel\HttpCache\Store;
+use Symfony\Component\HttpKernel\KernelInterface;
 
 /**
  * Manages HTTP cache objects in a Container.
  *
  * @author Fabien Potencier <fabien@symfony.com>
  */
-abstract class HttpCache extends BaseHttpCache
+class HttpCache extends BaseHttpCache
 {
     protected $cacheDir;
     protected $kernel;
 
     /**
-     * @param HttpKernelInterface $kernel   An HttpKernelInterface instance
-     * @param string              $cacheDir The cache directory (default used if null)
+     * @param string $cacheDir The cache directory (default used if null)
      */
-    public function __construct(HttpKernelInterface $kernel, string $cacheDir = null)
+    public function __construct(KernelInterface $kernel, string $cacheDir = null)
     {
         $this->kernel = $kernel;
         $this->cacheDir = $cacheDir;
 
-        parent::__construct($kernel, $this->createStore(), $this->createSurrogate(), array_merge(array('debug' => $kernel->isDebug()), $this->getOptions()));
+        $isDebug = $kernel->isDebug();
+        $options = ['debug' => $isDebug];
+
+        if ($isDebug) {
+            $options['stale_if_error'] = 0;
+        }
+
+        parent::__construct($kernel, $this->createStore(), $this->createSurrogate(), array_merge($options, $this->getOptions()));
     }
 
     /**
-     * Forwards the Request to the backend and returns the Response.
-     *
-     * @param Request  $request A Request instance
-     * @param bool     $raw     Whether to catch exceptions or not
-     * @param Response $entry   A Response instance (the stale entry if present, null otherwise)
-     *
-     * @return Response A Response instance
+     * {@inheritdoc}
      */
-    protected function forward(Request $request, $raw = false, Response $entry = null)
+    protected function forward(Request $request, bool $catch = false, Response $entry = null)
     {
         $this->getKernel()->boot();
         $this->getKernel()->getContainer()->set('cache', $this);
 
-        return parent::forward($request, $raw, $entry);
+        return parent::forward($request, $catch, $entry);
     }
 
     /**
@@ -64,7 +64,7 @@ abstract class HttpCache extends BaseHttpCache
      */
     protected function getOptions()
     {
-        return array();
+        return [];
     }
 
     protected function createSurrogate()

@@ -12,10 +12,10 @@
 namespace Symfony\Component\Form\Extension\Core\Type;
 
 use Symfony\Component\Form\AbstractType;
-use Symfony\Component\Form\FormBuilderInterface;
-use Symfony\Component\Form\FormView;
-use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\Extension\Core\EventListener\ResizeFormListener;
+use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormInterface;
+use Symfony\Component\Form\FormView;
 use Symfony\Component\OptionsResolver\Options;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 
@@ -27,10 +27,10 @@ class CollectionType extends AbstractType
     public function buildForm(FormBuilderInterface $builder, array $options)
     {
         if ($options['allow_add'] && $options['prototype']) {
-            $prototypeOptions = array_replace(array(
+            $prototypeOptions = array_replace([
                 'required' => $options['required'],
                 'label' => $options['prototype_name'].'label__',
-            ), $options['entry_options']);
+            ], $options['entry_options']);
 
             if (null !== $options['prototype_data']) {
                 $prototypeOptions['data'] = $options['prototype_data'];
@@ -56,10 +56,10 @@ class CollectionType extends AbstractType
      */
     public function buildView(FormView $view, FormInterface $form, array $options)
     {
-        $view->vars = array_replace($view->vars, array(
+        $view->vars = array_replace($view->vars, [
             'allow_add' => $options['allow_add'],
             'allow_delete' => $options['allow_delete'],
-        ));
+        ]);
 
         if ($form->getConfig()->hasAttribute('prototype')) {
             $prototype = $form->getConfig()->getAttribute('prototype');
@@ -72,8 +72,32 @@ class CollectionType extends AbstractType
      */
     public function finishView(FormView $view, FormInterface $form, array $options)
     {
-        if ($form->getConfig()->hasAttribute('prototype') && $view->vars['prototype']->vars['multipart']) {
-            $view->vars['multipart'] = true;
+        $prefixOffset = -1;
+        // check if the entry type also defines a block prefix
+        /** @var FormInterface $entry */
+        foreach ($form as $entry) {
+            if ($entry->getConfig()->getOption('block_prefix')) {
+                --$prefixOffset;
+            }
+
+            break;
+        }
+
+        foreach ($view as $entryView) {
+            array_splice($entryView->vars['block_prefixes'], $prefixOffset, 0, 'collection_entry');
+        }
+
+        /** @var FormInterface $prototype */
+        if ($prototype = $form->getConfig()->getAttribute('prototype')) {
+            if ($view->vars['prototype']->vars['multipart']) {
+                $view->vars['multipart'] = true;
+            }
+
+            if ($prefixOffset > -2 && $prototype->getConfig()->getOption('block_prefix')) {
+                --$prefixOffset;
+            }
+
+            array_splice($view->vars['prototype']->vars['block_prefixes'], $prefixOffset, 0, 'collection_entry');
         }
     }
 
@@ -88,19 +112,19 @@ class CollectionType extends AbstractType
             return $value;
         };
 
-        $resolver->setDefaults(array(
+        $resolver->setDefaults([
             'allow_add' => false,
             'allow_delete' => false,
             'prototype' => true,
             'prototype_data' => null,
             'prototype_name' => '__name__',
-            'entry_type' => __NAMESPACE__.'\TextType',
-            'entry_options' => array(),
+            'entry_type' => TextType::class,
+            'entry_options' => [],
             'delete_empty' => false,
-        ));
+        ]);
 
         $resolver->setNormalizer('entry_options', $entryOptionsNormalizer);
-        $resolver->setAllowedTypes('delete_empty', array('bool', 'callable'));
+        $resolver->setAllowedTypes('delete_empty', ['bool', 'callable']);
     }
 
     /**

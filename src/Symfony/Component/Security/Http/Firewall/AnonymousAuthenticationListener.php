@@ -11,20 +11,26 @@
 
 namespace Symfony\Component\Security\Http\Firewall;
 
+use Psr\Log\LoggerInterface;
+use Symfony\Component\HttpFoundation\Request;
+use Symfony\Component\HttpKernel\Event\RequestEvent;
 use Symfony\Component\Security\Core\Authentication\AuthenticationManagerInterface;
+use Symfony\Component\Security\Core\Authentication\Token\AnonymousToken;
 use Symfony\Component\Security\Core\Authentication\Token\Storage\TokenStorageInterface;
 use Symfony\Component\Security\Core\Exception\AuthenticationException;
-use Psr\Log\LoggerInterface;
-use Symfony\Component\HttpKernel\Event\GetResponseEvent;
-use Symfony\Component\Security\Core\Authentication\Token\AnonymousToken;
+
+// Help opcache.preload discover always-needed symbols
+class_exists(AnonymousToken::class);
 
 /**
  * AnonymousAuthenticationListener automatically adds a Token if none is
  * already present.
  *
  * @author Fabien Potencier <fabien@symfony.com>
+ *
+ * @final
  */
-class AnonymousAuthenticationListener implements ListenerInterface
+class AnonymousAuthenticationListener extends AbstractListener
 {
     private $tokenStorage;
     private $secret;
@@ -40,16 +46,24 @@ class AnonymousAuthenticationListener implements ListenerInterface
     }
 
     /**
+     * {@inheritdoc}
+     */
+    public function supports(Request $request): ?bool
+    {
+        return null; // always run authenticate() lazily with lazy firewalls
+    }
+
+    /**
      * Handles anonymous authentication.
      */
-    public function handle(GetResponseEvent $event)
+    public function authenticate(RequestEvent $event)
     {
         if (null !== $this->tokenStorage->getToken()) {
             return;
         }
 
         try {
-            $token = new AnonymousToken($this->secret, 'anon.', array());
+            $token = new AnonymousToken($this->secret, 'anon.', []);
             if (null !== $this->authenticationManager) {
                 $token = $this->authenticationManager->authenticate($token);
             }
@@ -61,7 +75,7 @@ class AnonymousAuthenticationListener implements ListenerInterface
             }
         } catch (AuthenticationException $failed) {
             if (null !== $this->logger) {
-                $this->logger->info('Anonymous authentication failed.', array('exception' => $failed));
+                $this->logger->info('Anonymous authentication failed.', ['exception' => $failed]);
             }
         }
     }

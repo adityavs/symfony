@@ -19,7 +19,7 @@ class FilesystemLoaderTest extends TestCase
 {
     protected static $fixturesPath;
 
-    public static function setUpBeforeClass()
+    public static function setUpBeforeClass(): void
     {
         self::$fixturesPath = realpath(__DIR__.'/../Fixtures/');
     }
@@ -27,11 +27,10 @@ class FilesystemLoaderTest extends TestCase
     public function testConstructor()
     {
         $pathPattern = self::$fixturesPath.'/templates/%name%.%engine%';
-        $path = self::$fixturesPath.'/templates';
         $loader = new ProjectTemplateLoader2($pathPattern);
-        $this->assertEquals(array($pathPattern), $loader->getTemplatePathPatterns(), '__construct() takes a path as its second argument');
-        $loader = new ProjectTemplateLoader2(array($pathPattern));
-        $this->assertEquals(array($pathPattern), $loader->getTemplatePathPatterns(), '__construct() takes an array of paths as its second argument');
+        $this->assertEquals([$pathPattern], $loader->getTemplatePathPatterns(), '__construct() takes a path as its second argument');
+        $loader = new ProjectTemplateLoader2([$pathPattern]);
+        $this->assertEquals([$pathPattern], $loader->getTemplatePathPatterns(), '__construct() takes an array of paths as its second argument');
     }
 
     public function testIsAbsolutePath()
@@ -66,7 +65,7 @@ class FilesystemLoaderTest extends TestCase
         $loader->setLogger($logger);
         $this->assertFalse($loader->load(new TemplateReference('foo.xml', 'php')), '->load() returns false if the template does not exist for the given engine');
 
-        $loader = new ProjectTemplateLoader2(array(self::$fixturesPath.'/null/%name%', $pathPattern));
+        $loader = new ProjectTemplateLoader2([self::$fixturesPath.'/null/%name%', $pathPattern]);
         $loader->setLogger($logger);
         $loader->load(new TemplateReference('foo.php', 'php'));
     }
@@ -79,7 +78,7 @@ class ProjectTemplateLoader2 extends FilesystemLoader
         return $this->templatePathPatterns;
     }
 
-    public static function isAbsolutePath($path)
+    public static function isAbsolutePath($path): bool
     {
         return parent::isAbsolutePath($path);
     }

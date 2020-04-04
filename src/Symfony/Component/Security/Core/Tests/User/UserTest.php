@@ -12,25 +12,25 @@
 namespace Symfony\Component\Security\Core\Tests\User;
 
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Security\Core\User\EquatableInterface;
 use Symfony\Component\Security\Core\User\User;
+use Symfony\Component\Security\Core\User\UserInterface;
 
 class UserTest extends TestCase
 {
-    /**
-     * @expectedException \InvalidArgumentException
-     */
     public function testConstructorException()
     {
+        $this->expectException('InvalidArgumentException');
         new User('', 'superpass');
     }
 
     public function testGetRoles()
     {
         $user = new User('fabien', 'superpass');
-        $this->assertEquals(array(), $user->getRoles());
+        $this->assertEquals([], $user->getRoles());
 
-        $user = new User('fabien', 'superpass', array('ROLE_ADMIN'));
-        $this->assertEquals(array('ROLE_ADMIN'), $user->getRoles());
+        $user = new User('fabien', 'superpass', ['ROLE_ADMIN']);
+        $this->assertEquals(['ROLE_ADMIN'], $user->getRoles());
     }
 
     public function testGetPassword()
@@ -56,7 +56,7 @@ class UserTest extends TestCase
         $user = new User('fabien', 'superpass');
         $this->assertTrue($user->isAccountNonExpired());
 
-        $user = new User('fabien', 'superpass', array(), true, false);
+        $user = new User('fabien', 'superpass', [], true, false);
         $this->assertFalse($user->isAccountNonExpired());
     }
 
@@ -65,7 +65,7 @@ class UserTest extends TestCase
         $user = new User('fabien', 'superpass');
         $this->assertTrue($user->isCredentialsNonExpired());
 
-        $user = new User('fabien', 'superpass', array(), true, true, false);
+        $user = new User('fabien', 'superpass', [], true, true, false);
         $this->assertFalse($user->isCredentialsNonExpired());
     }
 
@@ -74,7 +74,7 @@ class UserTest extends TestCase
         $user = new User('fabien', 'superpass');
         $this->assertTrue($user->isAccountNonLocked());
 
-        $user = new User('fabien', 'superpass', array(), true, true, true, false);
+        $user = new User('fabien', 'superpass', [], true, true, true, false);
         $this->assertFalse($user->isAccountNonLocked());
     }
 
@@ -83,7 +83,7 @@ class UserTest extends TestCase
         $user = new User('fabien', 'superpass');
         $this->assertTrue($user->isEnabled());
 
-        $user = new User('fabien', 'superpass', array(), false);
+        $user = new User('fabien', 'superpass', [], false);
         $this->assertFalse($user->isEnabled());
     }
 
@@ -98,5 +98,38 @@ class UserTest extends TestCase
     {
         $user = new User('fabien', 'superpass');
         $this->assertEquals('fabien', (string) $user);
+    }
+
+    /**
+     * @dataProvider isEqualToData
+     *
+     * @param bool                             $expectation
+     * @param EquatableInterface|UserInterface $a
+     * @param EquatableInterface|UserInterface $b
+     */
+    public function testIsEqualTo($expectation, $a, $b)
+    {
+        $this->assertSame($expectation, $a->isEqualTo($b));
+        $this->assertSame($expectation, $b->isEqualTo($a));
+    }
+
+    public static function isEqualToData()
+    {
+        return [
+            [true, new User('username', 'password'), new User('username', 'password')],
+            [false, new User('username', 'password', ['ROLE']), new User('username', 'password')],
+            [false, new User('username', 'password', ['ROLE']), new User('username', 'password', ['NO ROLE'])],
+            [false, new User('diff', 'diff'), new User('username', 'password')],
+            [false, new User('diff', 'diff', [], false), new User('username', 'password')],
+            [false, new User('diff', 'diff', [], false, false), new User('username', 'password')],
+            [false, new User('diff', 'diff', [], false, false, false), new User('username', 'password')],
+            [false, new User('diff', 'diff', [], false, false, false, false), new User('username', 'password')],
+        ];
+    }
+
+    public function testIsEqualToWithDifferentUser()
+    {
+        $user = new User('username', 'password');
+        $this->assertFalse($user->isEqualTo($this->getMockBuilder(UserInterface::class)->getMock()));
     }
 }

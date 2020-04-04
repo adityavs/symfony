@@ -11,6 +11,7 @@
 
 namespace Symfony\Component\Validator;
 
+use Symfony\Component\Validator\Exception\ValidationFailedException;
 use Symfony\Component\Validator\Validator\ValidatorInterface;
 
 /**
@@ -21,12 +22,27 @@ use Symfony\Component\Validator\Validator\ValidatorInterface;
 final class Validation
 {
     /**
+     * Creates a callable chain of constraints.
+     */
+    public static function createCallable(Constraint ...$constraints): callable
+    {
+        $validator = self::createValidator();
+
+        return static function ($value) use ($constraints, $validator) {
+            $violations = $validator->validate($value, $constraints);
+            if (0 !== $violations->count()) {
+                throw new ValidationFailedException($value, $violations);
+            }
+
+            return $value;
+        };
+    }
+
+    /**
      * Creates a new validator.
      *
      * If you want to configure the validator, use
      * {@link createValidatorBuilder()} instead.
-     *
-     * @return ValidatorInterface The new validator
      */
     public static function createValidator(): ValidatorInterface
     {
@@ -35,8 +51,6 @@ final class Validation
 
     /**
      * Creates a configurable builder for validator objects.
-     *
-     * @return ValidatorBuilderInterface The new builder
      */
     public static function createValidatorBuilder(): ValidatorBuilder
     {

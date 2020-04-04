@@ -1,18 +1,13 @@
 <?php
 
-$container->loadFromExtension('security', array(
-    'encoders' => array(
-        'JMS\FooBundle\Entity\User7' => array(
+$this->load('container1.php', $container);
+
+$container->loadFromExtension('security', [
+    'encoders' => [
+        'JMS\FooBundle\Entity\User7' => [
             'algorithm' => 'argon2i',
-        ),
-    ),
-    'providers' => array(
-        'default' => array('id' => 'foo'),
-    ),
-    'firewalls' => array(
-        'main' => array(
-            'form_login' => false,
-            'http_basic' => null,
-        ),
-    ),
-));
+            'memory_cost' => 256,
+            'time_cost' => 1,
+        ],
+    ],
+]);

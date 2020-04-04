@@ -13,8 +13,9 @@ namespace Symfony\Component\DependencyInjection\Tests\Compiler;
 
 use PHPUnit\Framework\TestCase;
 use Symfony\Component\DependencyInjection\Alias;
-use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Compiler\DecoratorServicePass;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
+use Symfony\Component\DependencyInjection\ContainerInterface;
 
 class DecoratorServicePassTest extends TestCase
 {
@@ -125,28 +126,125 @@ class DecoratorServicePassTest extends TestCase
         $this->assertNull($quxDefinition->getDecoratedService());
     }
 
+    public function testProcessWithInvalidDecorated()
+    {
+        $container = new ContainerBuilder();
+        $decoratorDefinition = $container
+            ->register('decorator')
+            ->setDecoratedService('unknown_decorated', null, 0, ContainerInterface::IGNORE_ON_INVALID_REFERENCE)
+        ;
+
+        $this->process($container);
+        $this->assertFalse($container->has('decorator'));
+
+        $container = new ContainerBuilder();
+        $decoratorDefinition = $container
+            ->register('decorator')
+            ->setDecoratedService('unknown_decorated', null, 0, ContainerInterface::NULL_ON_INVALID_REFERENCE)
+        ;
+
+        $this->process($container);
+        $this->assertTrue($container->has('decorator'));
+        $this->assertSame(ContainerInterface::NULL_ON_INVALID_REFERENCE, $decoratorDefinition->decorationOnInvalid);
+
+        $container = new ContainerBuilder();
+        $decoratorDefinition = $container
+            ->register('decorator')
+            ->setDecoratedService('unknown_service')
+        ;
+
+        $this->expectException('Symfony\Component\DependencyInjection\Exception\ServiceNotFoundException');
+        $this->process($container);
+    }
+
+    public function testProcessNoInnerAliasWithInvalidDecorated()
+    {
+        $container = new ContainerBuilder();
+        $decoratorDefinition = $container
+            ->register('decorator')
+            ->setDecoratedService('unknown_decorated', null, 0, ContainerInterface::NULL_ON_INVALID_REFERENCE)
+        ;
+
+        $this->process($container);
+        $this->assertFalse($container->hasAlias('decorator.inner'));
+    }
+
+    public function testProcessWithInvalidDecoratedAndWrongBehavior()
+    {
+        $container = new ContainerBuilder();
+        $decoratorDefinition = $container
+            ->register('decorator')
+            ->setDecoratedService('unknown_decorated', null, 0, 12)
+        ;
+
+        $this->expectException('Symfony\Component\DependencyInjection\Exception\ServiceNotFoundException');
+        $this->process($container);
+    }
+
     public function testProcessMovesTagsFromDecoratedDefinitionToDecoratingDefinition()
     {
         $container = new ContainerBuilder();
         $container
             ->register('foo')
-            ->setTags(array('bar' => array('attr' => 'baz')))
+            ->setTags(['bar' => ['attr' => 'baz']])
         ;
         $container
             ->register('baz')
-            ->setTags(array('foobar' => array('attr' => 'bar')))
+            ->setTags(['foobar' => ['attr' => 'bar']])
             ->setDecoratedService('foo')
         ;
 
         $this->process($container);
 
         $this->assertEmpty($container->getDefinition('baz.inner')->getTags());
-        $this->assertEquals(array('bar' => array('attr' => 'baz'), 'foobar' => array('attr' => 'bar')), $container->getDefinition('baz')->getTags());
+        $this->assertEquals(['bar' => ['attr' => 'baz'], 'foobar' => ['attr' => 'bar']], $container->getDefinition('baz')->getTags());
+    }
+
+    public function testProcessMovesTagsFromDecoratedDefinitionToDecoratingDefinitionMultipleTimes()
+    {
+        $container = new ContainerBuilder();
+        $container
+            ->register('foo')
+            ->setPublic(true)
+            ->setTags(['bar' => ['attr' => 'baz']])
+        ;
+        $container
+            ->register('deco1')
+            ->setDecoratedService('foo', null, 50)
+        ;
+        $container
+            ->register('deco2')
+            ->setDecoratedService('foo', null, 2)
+        ;
+
+        $this->process($container);
+
+        $this->assertEmpty($container->getDefinition('deco1')->getTags());
+        $this->assertEquals(['bar' => ['attr' => 'baz']], $container->getDefinition('deco2')->getTags());
+    }
+
+    public function testProcessLeavesServiceLocatorTagOnOriginalDefinition()
+    {
+        $container = new ContainerBuilder();
+        $container
+            ->register('foo')
+            ->setTags(['container.service_locator' => [0 => []], 'bar' => ['attr' => 'baz']])
+        ;
+        $container
+            ->register('baz')
+            ->setTags(['foobar' => ['attr' => 'bar']])
+            ->setDecoratedService('foo')
+        ;
+
+        $this->process($container);
+
+        $this->assertEquals(['container.service_locator' => [0 => []]], $container->getDefinition('baz.inner')->getTags());
+        $this->assertEquals(['bar' => ['attr' => 'baz'], 'foobar' => ['attr' => 'bar']], $container->getDefinition('baz')->getTags());
     }
 
     protected function process(ContainerBuilder $container)
     {
-        $repeatedPass = new DecoratorServicePass();
-        $repeatedPass->process($container);
+        $pass = new DecoratorServicePass();
+        $pass->process($container);
     }
 }

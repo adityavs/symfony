@@ -69,6 +69,19 @@ abstract class AbstractDescriptorTest extends TestCase
         return $this->getContainerBuilderDescriptionTestData(ObjectsProvider::getContainerBuilders());
     }
 
+    /**
+     * @dataProvider getDescribeContainerExistingClassDefinitionTestData
+     */
+    public function testDescribeContainerExistingClassDefinition(Definition $definition, $expectedDescription)
+    {
+        $this->assertDescription($expectedDescription, $definition);
+    }
+
+    public function getDescribeContainerExistingClassDefinitionTestData()
+    {
+        return $this->getDescriptionTestData(ObjectsProvider::getContainerDefinitionsWithExistingClasses());
+    }
+
     /** @dataProvider getDescribeContainerDefinitionTestData */
     public function testDescribeContainerDefinition(Definition $definition, $expectedDescription)
     {
@@ -83,13 +96,13 @@ abstract class AbstractDescriptorTest extends TestCase
     /** @dataProvider getDescribeContainerDefinitionWithArgumentsShownTestData */
     public function testDescribeContainerDefinitionWithArgumentsShown(Definition $definition, $expectedDescription)
     {
-        $this->assertDescription($expectedDescription, $definition, array('show_arguments' => true));
+        $this->assertDescription($expectedDescription, $definition, ['show_arguments' => true]);
     }
 
     public function getDescribeContainerDefinitionWithArgumentsShownTestData()
     {
         $definitions = ObjectsProvider::getContainerDefinitions();
-        $definitionsWithArgs = array();
+        $definitionsWithArgs = [];
 
         foreach ($definitions as $key => $definition) {
             $definitionsWithArgs[str_replace('definition_', 'definition_arguments_', $key)] = $definition;
@@ -110,7 +123,7 @@ abstract class AbstractDescriptorTest extends TestCase
     }
 
     /** @dataProvider getDescribeContainerDefinitionWhichIsAnAliasTestData */
-    public function testDescribeContainerDefinitionWhichIsAnAlias(Alias $alias, $expectedDescription, ContainerBuilder $builder, $options = array())
+    public function testDescribeContainerDefinitionWhichIsAnAlias(Alias $alias, $expectedDescription, ContainerBuilder $builder, $options = [])
     {
         $this->assertDescription($expectedDescription, $builder, $options);
     }
@@ -119,10 +132,10 @@ abstract class AbstractDescriptorTest extends TestCase
     {
         $builder = current(ObjectsProvider::getContainerBuilders());
         $builder->setDefinition('service_1', $builder->getDefinition('definition_1'));
-        $builder->setDefinition('service_2', $builder->getDefinition('definition_2'));
+        $builder->setDefinition('.service_2', $builder->getDefinition('.definition_2'));
 
         $aliases = ObjectsProvider::getContainerAliases();
-        $aliasesWithDefinitions = array();
+        $aliasesWithDefinitions = [];
         foreach ($aliases as $name => $alias) {
             $aliasesWithDefinitions[str_replace('alias_', 'alias_with_definition_', $name)] = $alias;
         }
@@ -130,8 +143,10 @@ abstract class AbstractDescriptorTest extends TestCase
         $i = 0;
         $data = $this->getDescriptionTestData($aliasesWithDefinitions);
         foreach ($aliases as $name => $alias) {
+            $file = array_pop($data[$i]);
             $data[$i][] = $builder;
-            $data[$i][] = array('id' => $name);
+            $data[$i][] = ['id' => $name];
+            $data[$i][] = $file;
             ++$i;
         }
 
@@ -148,8 +163,12 @@ abstract class AbstractDescriptorTest extends TestCase
     {
         $data = $this->getDescriptionTestData(ObjectsProvider::getContainerParameter());
 
-        $data[0][] = array('parameter' => 'database_name');
-        $data[1][] = array('parameter' => 'twig.form.resources');
+        $file = array_pop($data[0]);
+        $data[0][] = ['parameter' => 'database_name'];
+        $data[0][] = $file;
+        $file = array_pop($data[1]);
+        $data[1][] = ['parameter' => 'twig.form.resources'];
+        $data[1][] = $file;
 
         return $data;
     }
@@ -176,18 +195,48 @@ abstract class AbstractDescriptorTest extends TestCase
         return $this->getDescriptionTestData(ObjectsProvider::getCallables());
     }
 
+    /** @dataProvider getClassDescriptionTestData */
+    public function testGetClassDecription($object, $expectedDescription)
+    {
+        $this->assertEquals($expectedDescription, $this->getDescriptor()->getClassDescription($object));
+    }
+
+    public function getClassDescriptionTestData()
+    {
+        return [
+            [ClassWithDocCommentOnMultipleLines::class, 'This is the first line of the description. This is the second line.'],
+            [ClassWithDocCommentWithoutInitialSpace::class, 'Foo.'],
+            [ClassWithoutDocComment::class, ''],
+            [ClassWithDocComment::class, 'This is a class with a doc comment.'],
+        ];
+    }
+
+    /**
+     * @dataProvider getDeprecationsTestData
+     */
+    public function testGetDeprecations(ContainerBuilder $builder, $expectedDescription)
+    {
+        $this->assertDescription($expectedDescription, $builder, ['deprecations' => true]);
+    }
+
+    public function getDeprecationsTestData()
+    {
+        return $this->getDescriptionTestData(ObjectsProvider::getContainerDeprecations());
+    }
+
     abstract protected function getDescriptor();
 
     abstract protected function getFormat();
 
-    private function assertDescription($expectedDescription, $describedObject, array $options = array())
+    private function assertDescription($expectedDescription, $describedObject, array $options = [])
     {
+        $options['is_debug'] = false;
         $options['raw_output'] = true;
         $options['raw_text'] = true;
         $output = new BufferedOutput(BufferedOutput::VERBOSITY_NORMAL, true);
 
         if ('txt' === $this->getFormat()) {
-            $options['output'] = new SymfonyStyle(new ArrayInput(array()), $output);
+            $options['output'] = new SymfonyStyle(new ArrayInput([]), $output);
         }
 
         $this->getDescriptor()->describe($output, $describedObject, $options);
@@ -201,10 +250,11 @@ abstract class AbstractDescriptorTest extends TestCase
 
     private function getDescriptionTestData(array $objects)
     {
-        $data = array();
+        $data = [];
         foreach ($objects as $name => $object) {
-            $description = file_get_contents(sprintf('%s/../../Fixtures/Descriptor/%s.%s', __DIR__, $name, $this->getFormat()));
-            $data[] = array($object, $description);
+            $file = sprintf('%s.%s', trim($name, '.'), $this->getFormat());
+            $description = file_get_contents(__DIR__.'/../../Fixtures/Descriptor/'.$file);
+            $data[] = [$object, $description, $file];
         }
 
         return $data;
@@ -212,19 +262,20 @@ abstract class AbstractDescriptorTest extends TestCase
 
     private function getContainerBuilderDescriptionTestData(array $objects)
     {
-        $variations = array(
-            'services' => array('show_private' => true),
-            'public' => array('show_private' => false),
-            'tag1' => array('show_private' => true, 'tag' => 'tag1'),
-            'tags' => array('group_by' => 'tags', 'show_private' => true),
-            'arguments' => array('show_private' => false, 'show_arguments' => true),
-        );
+        $variations = [
+            'services' => ['show_hidden' => true],
+            'public' => ['show_hidden' => false],
+            'tag1' => ['show_hidden' => true, 'tag' => 'tag1'],
+            'tags' => ['group_by' => 'tags', 'show_hidden' => true],
+            'arguments' => ['show_hidden' => false, 'show_arguments' => true],
+        ];
 
-        $data = array();
+        $data = [];
         foreach ($objects as $name => $object) {
             foreach ($variations as $suffix => $options) {
-                $description = file_get_contents(sprintf('%s/../../Fixtures/Descriptor/%s_%s.%s', __DIR__, $name, $suffix, $this->getFormat()));
-                $data[] = array($object, $description, $options);
+                $file = sprintf('%s_%s.%s', trim($name, '.'), $suffix, $this->getFormat());
+                $description = file_get_contents(__DIR__.'/../../Fixtures/Descriptor/'.$file);
+                $data[] = [$object, $description, $options, $file];
             }
         }
 
@@ -233,16 +284,38 @@ abstract class AbstractDescriptorTest extends TestCase
 
     private function getEventDispatcherDescriptionTestData(array $objects)
     {
-        $variations = array(
-            'events' => array(),
-            'event1' => array('event' => 'event1'),
-        );
+        $variations = [
+            'events' => [],
+            'event1' => ['event' => 'event1'],
+        ];
 
-        $data = array();
+        $data = [];
         foreach ($objects as $name => $object) {
             foreach ($variations as $suffix => $options) {
-                $description = file_get_contents(sprintf('%s/../../Fixtures/Descriptor/%s_%s.%s', __DIR__, $name, $suffix, $this->getFormat()));
-                $data[] = array($object, $description, $options);
+                $file = sprintf('%s_%s.%s', trim($name, '.'), $suffix, $this->getFormat());
+                $description = file_get_contents(__DIR__.'/../../Fixtures/Descriptor/'.$file);
+                $data[] = [$object, $description, $options, $file];
+            }
+        }
+
+        return $data;
+    }
+
+    /** @dataProvider getDescribeContainerBuilderWithPriorityTagsTestData */
+    public function testDescribeContainerBuilderWithPriorityTags(ContainerBuilder $builder, $expectedDescription, array $options): void
+    {
+        $this->assertDescription($expectedDescription, $builder, $options);
+    }
+
+    public function getDescribeContainerBuilderWithPriorityTagsTestData(): array
+    {
+        $variations = ['priority_tag' => ['tag' => 'tag1']];
+        $data = [];
+        foreach (ObjectsProvider::getContainerBuildersWithPriorityTags() as $name => $object) {
+            foreach ($variations as $suffix => $options) {
+                $file = sprintf('%s_%s.%s', trim($name, '.'), $suffix, $this->getFormat());
+                $description = file_get_contents(__DIR__.'/../../Fixtures/Descriptor/'.$file);
+                $data[] = [$object, $description, $options, $file];
             }
         }
 

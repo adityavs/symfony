@@ -20,14 +20,14 @@ use Symfony\Component\Serializer\Exception\RuntimeException;
  * @author Johannes M. Schmitt <schmittjoh@gmail.com>
  * @author Lukas Kahwe Smith <smith@pooteeweet.org>
  *
- * @final since version 3.3.
+ * @final
  */
 class ChainDecoder implements ContextAwareDecoderInterface
 {
-    protected $decoders = array();
-    protected $decoderByFormat = array();
+    protected $decoders = [];
+    protected $decoderByFormat = [];
 
-    public function __construct(array $decoders = array())
+    public function __construct(array $decoders = [])
     {
         $this->decoders = $decoders;
     }
@@ -35,7 +35,7 @@ class ChainDecoder implements ContextAwareDecoderInterface
     /**
      * {@inheritdoc}
      */
-    final public function decode($data, $format, array $context = array())
+    final public function decode(string $data, string $format, array $context = [])
     {
         return $this->getDecoder($format, $context)->decode($data, $format, $context);
     }
@@ -43,7 +43,7 @@ class ChainDecoder implements ContextAwareDecoderInterface
     /**
      * {@inheritdoc}
      */
-    public function supportsDecoding($format, array $context = array())
+    public function supportsDecoding(string $format, array $context = []): bool
     {
         try {
             $this->getDecoder($format, $context);

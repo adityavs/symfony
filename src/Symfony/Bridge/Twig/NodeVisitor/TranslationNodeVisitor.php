@@ -23,26 +23,26 @@ use Twig\NodeVisitor\AbstractNodeVisitor;
  *
  * @author Fabien Potencier <fabien@symfony.com>
  */
-class TranslationNodeVisitor extends AbstractNodeVisitor
+final class TranslationNodeVisitor extends AbstractNodeVisitor
 {
     const UNDEFINED_DOMAIN = '_undefined';
 
     private $enabled = false;
-    private $messages = array();
+    private $messages = [];
 
-    public function enable()
+    public function enable(): void
     {
         $this->enabled = true;
-        $this->messages = array();
+        $this->messages = [];
     }
 
-    public function disable()
+    public function disable(): void
     {
         $this->enabled = false;
-        $this->messages = array();
+        $this->messages = [];
     }
 
-    public function getMessages()
+    public function getMessages(): array
     {
         return $this->messages;
     }
@@ -50,7 +50,7 @@ class TranslationNodeVisitor extends AbstractNodeVisitor
     /**
      * {@inheritdoc}
      */
-    protected function doEnterNode(Node $node, Environment $env)
+    protected function doEnterNode(Node $node, Environment $env): Node
     {
         if (!$this->enabled) {
             return $node;
@@ -62,26 +62,26 @@ class TranslationNodeVisitor extends AbstractNodeVisitor
             $node->getNode('node') instanceof ConstantExpression
         ) {
             // extract constant nodes with a trans filter
-            $this->messages[] = array(
+            $this->messages[] = [
                 $node->getNode('node')->getAttribute('value'),
                 $this->getReadDomainFromArguments($node->getNode('arguments'), 1),
-            );
+            ];
         } elseif (
             $node instanceof FilterExpression &&
             'transchoice' === $node->getNode('filter')->getAttribute('value') &&
             $node->getNode('node') instanceof ConstantExpression
         ) {
             // extract constant nodes with a trans filter
-            $this->messages[] = array(
+            $this->messages[] = [
                 $node->getNode('node')->getAttribute('value'),
                 $this->getReadDomainFromArguments($node->getNode('arguments'), 2),
-            );
+            ];
         } elseif ($node instanceof TransNode) {
             // extract trans nodes
-            $this->messages[] = array(
+            $this->messages[] = [
                 $node->getNode('body')->getAttribute('data'),
                 $node->hasNode('domain') ? $this->getReadDomainFromNode($node->getNode('domain')) : null,
-            );
+            ];
         }
 
         return $node;
@@ -90,7 +90,7 @@ class TranslationNodeVisitor extends AbstractNodeVisitor
     /**
      * {@inheritdoc}
      */
-    protected function doLeaveNode(Node $node, Environment $env)
+    protected function doLeaveNode(Node $node, Environment $env): ?Node
     {
         return $node;
     }
@@ -98,7 +98,7 @@ class TranslationNodeVisitor extends AbstractNodeVisitor
     /**
      * {@inheritdoc}
      */
-    public function getPriority()
+    public function getPriority(): int
     {
         return 0;
     }

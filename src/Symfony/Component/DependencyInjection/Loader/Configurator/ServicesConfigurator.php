@@ -29,14 +29,20 @@ class ServicesConfigurator extends AbstractConfigurator
     private $container;
     private $loader;
     private $instanceof;
+    private $path;
+    private $anonymousHash;
+    private $anonymousCount;
 
-    public function __construct(ContainerBuilder $container, PhpFileLoader $loader, array &$instanceof)
+    public function __construct(ContainerBuilder $container, PhpFileLoader $loader, array &$instanceof, string $path = null, int &$anonymousCount = 0)
     {
         $this->defaults = new Definition();
         $this->container = $container;
         $this->loader = $loader;
         $this->instanceof = &$instanceof;
-        $instanceof = array();
+        $this->path = $path;
+        $this->anonymousHash = ContainerBuilder::hash($path ?: mt_rand());
+        $this->anonymousCount = &$anonymousCount;
+        $instanceof = [];
     }
 
     /**
@@ -44,7 +50,7 @@ class ServicesConfigurator extends AbstractConfigurator
      */
     final public function defaults(): DefaultsConfigurator
     {
-        return new DefaultsConfigurator($this, $this->defaults = new Definition());
+        return new DefaultsConfigurator($this, $this->defaults = new Definition(), $this->path);
     }
 
     /**
@@ -54,25 +60,39 @@ class ServicesConfigurator extends AbstractConfigurator
     {
         $this->instanceof[$fqcn] = $definition = new ChildDefinition('');
 
-        return new InstanceofConfigurator($this, $definition, $fqcn);
+        return new InstanceofConfigurator($this, $definition, $fqcn, $this->path);
     }
 
     /**
      * Registers a service.
+     *
+     * @param string|null $id    The service id, or null to create an anonymous service
+     * @param string|null $class The class of the service, or null when $id is also the class name
      */
-    final public function set(string $id, string $class = null): ServiceConfigurator
+    final public function set(?string $id, string $class = null): ServiceConfigurator
     {
         $defaults = $this->defaults;
         $allowParent = !$defaults->getChanges() && empty($this->instanceof);
 
         $definition = new Definition();
-        $definition->setPublic($defaults->isPublic());
+
+        if (null === $id) {
+            if (!$class) {
+                throw new \LogicException('Anonymous services must have a class name.');
+            }
+
+            $id = sprintf('.%d_%s', ++$this->anonymousCount, preg_replace('/^.*\\\\/', '', $class).'~'.$this->anonymousHash);
+            $definition->setPublic(false);
+        } else {
+            $definition->setPublic($defaults->isPublic());
+        }
+
         $definition->setAutowired($defaults->isAutowired());
         $definition->setAutoconfigured($defaults->isAutoconfigured());
         $definition->setBindings($defaults->getBindings());
-        $definition->setChanges(array());
+        $definition->setChanges([]);
 
-        $configurator = new ServiceConfigurator($this->container, $this->instanceof, $allowParent, $this, $definition, $id, $defaults->getTags());
+        $configurator = new ServiceConfigurator($this->container, $this->instanceof, $allowParent, $this, $definition, $id, $defaults->getTags(), $this->path);
 
         return null !== $class ? $configurator->class($class) : $configurator;
     }
@@ -109,7 +129,7 @@ class ServicesConfigurator extends AbstractConfigurator
         $allowParent = !$this->defaults->getChanges() && empty($this->instanceof);
         $definition = $this->container->getDefinition($id);
 
-        return new ServiceConfigurator($this->container, $definition->getInstanceofConditionals(), $allowParent, $this, $definition, $id, array());
+        return new ServiceConfigurator($this->container, $definition->getInstanceofConditionals(), $allowParent, $this, $definition, $id, []);
     }
 
     /**
@@ -118,5 +138,10 @@ class ServicesConfigurator extends AbstractConfigurator
     final public function __invoke(string $id, string $class = null): ServiceConfigurator
     {
         return $this->set($id, $class);
+    }
+
+    public function __destruct()
+    {
+        $this->loader->registerAliasesForSinglyImplementedInterfaces();
     }
 }

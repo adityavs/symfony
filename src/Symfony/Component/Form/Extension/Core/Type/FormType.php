@@ -11,12 +11,13 @@
 
 namespace Symfony\Component\Form\Extension\Core\Type;
 
+use Symfony\Component\Form\Exception\LogicException;
+use Symfony\Component\Form\Extension\Core\DataMapper\PropertyPathMapper;
+use Symfony\Component\Form\Extension\Core\EventListener\TrimListener;
 use Symfony\Component\Form\FormBuilderInterface;
+use Symfony\Component\Form\FormConfigBuilderInterface;
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Form\FormView;
-use Symfony\Component\Form\Extension\Core\EventListener\TrimListener;
-use Symfony\Component\Form\Extension\Core\DataMapper\PropertyPathMapper;
-use Symfony\Component\Form\Exception\LogicException;
 use Symfony\Component\OptionsResolver\Options;
 use Symfony\Component\OptionsResolver\OptionsResolver;
 use Symfony\Component\PropertyAccess\PropertyAccess;
@@ -38,7 +39,7 @@ class FormType extends BaseType
     {
         parent::buildForm($builder, $options);
 
-        $isDataOptionSet = array_key_exists('data', $options);
+        $isDataOptionSet = \array_key_exists('data', $options);
 
         $builder
             ->setRequired($options['required'])
@@ -58,6 +59,14 @@ class FormType extends BaseType
         if ($options['trim']) {
             $builder->addEventSubscriber(new TrimListener());
         }
+
+        if (!method_exists($builder, 'setIsEmptyCallback')) {
+            trigger_deprecation('symfony/form', '5.1', 'Not implementing the "%s::setIsEmptyCallback()" method in "%s" is deprecated.', FormConfigBuilderInterface::class, get_debug_type($builder));
+
+            return;
+        }
+
+        $builder->setIsEmptyCallback($options['is_empty_callback']);
     }
 
     /**
@@ -68,6 +77,7 @@ class FormType extends BaseType
         parent::buildView($view, $form, $options);
 
         $name = $form->getName();
+        $helpTranslationParameters = $options['help_translation_parameters'];
 
         if ($view->parent) {
             if ('' === $name) {
@@ -78,9 +88,12 @@ class FormType extends BaseType
             if (!isset($view->vars['attr']['readonly']) && isset($view->parent->vars['attr']['readonly']) && false !== $view->parent->vars['attr']['readonly']) {
                 $view->vars['attr']['readonly'] = true;
             }
+
+            $helpTranslationParameters = array_merge($view->parent->vars['help_translation_parameters'], $helpTranslationParameters);
         }
 
-        $view->vars = array_replace($view->vars, array(
+        $formConfig = $form->getConfig();
+        $view->vars = array_replace($view->vars, [
             'errors' => $form->getErrors(),
             'valid' => $form->isSubmitted() ? $form->isValid() : true,
             'value' => $form->getViewData(),
@@ -88,11 +101,15 @@ class FormType extends BaseType
             'required' => $form->isRequired(),
             'size' => null,
             'label_attr' => $options['label_attr'],
-            'compound' => $form->getConfig()->getCompound(),
-            'method' => $form->getConfig()->getMethod(),
-            'action' => $form->getConfig()->getAction(),
+            'help' => $options['help'],
+            'help_attr' => $options['help_attr'],
+            'help_html' => $options['help_html'],
+            'help_translation_parameters' => $helpTranslationParameters,
+            'compound' => $formConfig->getCompound(),
+            'method' => $formConfig->getMethod(),
+            'action' => $formConfig->getAction(),
             'submitted' => $form->isSubmitted(),
-        ));
+        ]);
     }
 
     /**
@@ -121,7 +138,7 @@ class FormType extends BaseType
 
         // Derive "data_class" option from passed "data" object
         $dataClass = function (Options $options) {
-            return isset($options['data']) && is_object($options['data']) ? get_class($options['data']) : null;
+            return isset($options['data']) && \is_object($options['data']) ? \get_class($options['data']) : null;
         };
 
         // Derive "empty_data" closure from "data_class" option
@@ -135,7 +152,7 @@ class FormType extends BaseType
             }
 
             return function (FormInterface $form) {
-                return $form->getConfig()->getCompound() ? array() : '';
+                return $form->getConfig()->getCompound() ? [] : '';
             };
         };
 
@@ -154,11 +171,11 @@ class FormType extends BaseType
 
         // If data is given, the form is locked to that data
         // (independent of its value)
-        $resolver->setDefined(array(
+        $resolver->setDefined([
             'data',
-        ));
+        ]);
 
-        $resolver->setDefaults(array(
+        $resolver->setDefaults([
             'data_class' => $dataClass,
             'empty_data' => $emptyData,
             'trim' => true,
@@ -167,20 +184,31 @@ class FormType extends BaseType
             'mapped' => true,
             'by_reference' => true,
             'error_bubbling' => $errorBubbling,
-            'label_attr' => array(),
+            'label_attr' => [],
             'inherit_data' => false,
             'compound' => true,
             'method' => 'POST',
             // According to RFC 2396 (http://www.ietf.org/rfc/rfc2396.txt)
             // section 4.2., empty URIs are considered same-document references
             'action' => '',
-            'attr' => array(),
+            'attr' => [],
             'post_max_size_message' => 'The uploaded file was too large. Please try to upload a smaller file.',
             'upload_max_size_message' => $uploadMaxSizeMessage, // internal
-        ));
+            'allow_file_upload' => false,
+            'help' => null,
+            'help_attr' => [],
+            'help_html' => false,
+            'help_translation_parameters' => [],
+            'is_empty_callback' => null,
+        ]);
 
         $resolver->setAllowedTypes('label_attr', 'array');
-        $resolver->setAllowedTypes('upload_max_size_message', array('callable'));
+        $resolver->setAllowedTypes('action', 'string');
+        $resolver->setAllowedTypes('upload_max_size_message', ['callable']);
+        $resolver->setAllowedTypes('help', ['string', 'null']);
+        $resolver->setAllowedTypes('help_attr', 'array');
+        $resolver->setAllowedTypes('help_html', 'bool');
+        $resolver->setAllowedTypes('is_empty_callback', ['null', 'callable']);
     }
 
     /**
@@ -188,6 +216,7 @@ class FormType extends BaseType
      */
     public function getParent()
     {
+        return null;
     }
 
     /**

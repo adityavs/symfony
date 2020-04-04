@@ -26,8 +26,9 @@ class TraceableAccessDecisionManager implements AccessDecisionManagerInterface
 {
     private $manager;
     private $strategy;
-    private $voters = array();
-    private $decisionLog = array();
+    private $voters = [];
+    private $decisionLog = []; // All decision logs
+    private $currentLog = [];  // Logs being filled in
 
     public function __construct(AccessDecisionManagerInterface $manager)
     {
@@ -46,24 +47,45 @@ class TraceableAccessDecisionManager implements AccessDecisionManagerInterface
 
     /**
      * {@inheritdoc}
+     *
+     * @param bool $allowMultipleAttributes Whether to allow passing multiple values to the $attributes array
      */
-    public function decide(TokenInterface $token, array $attributes, $object = null)
+    public function decide(TokenInterface $token, array $attributes, $object = null/*, bool $allowMultipleAttributes = false*/): bool
     {
-        $result = $this->manager->decide($token, $attributes, $object);
-
-        $this->decisionLog[] = array(
+        $currentDecisionLog = [
             'attributes' => $attributes,
             'object' => $object,
-            'result' => $result,
-        );
+            'voterDetails' => [],
+        ];
+
+        $this->currentLog[] = &$currentDecisionLog;
+
+        $result = $this->manager->decide($token, $attributes, $object, 3 < \func_num_args() && func_get_arg(3));
+
+        $currentDecisionLog['result'] = $result;
+
+        $this->decisionLog[] = array_pop($this->currentLog); // Using a stack since decide can be called by voters
 
         return $result;
     }
 
     /**
-     * @return string
+     * Adds voter vote and class to the voter details.
+     *
+     * @param array $attributes attributes used for the vote
+     * @param int   $vote       vote of the voter
      */
-    public function getStrategy()
+    public function addVoterVote(VoterInterface $voter, array $attributes, int $vote)
+    {
+        $currentLogIndex = \count($this->currentLog) - 1;
+        $this->currentLog[$currentLogIndex]['voterDetails'][] = [
+            'voter' => $voter,
+            'attributes' => $attributes,
+            'vote' => $vote,
+        ];
+    }
+
+    public function getStrategy(): string
     {
         // The $strategy property is misleading because it stores the name of its
         // method (e.g. 'decideAffirmative') instead of the original strategy name
@@ -74,15 +96,12 @@ class TraceableAccessDecisionManager implements AccessDecisionManagerInterface
     /**
      * @return iterable|VoterInterface[]
      */
-    public function getVoters()
+    public function getVoters(): iterable
     {
         return $this->voters;
     }
 
-    /**
-     * @return array
-     */
-    public function getDecisionLog()
+    public function getDecisionLog(): array
     {
         return $this->decisionLog;
     }

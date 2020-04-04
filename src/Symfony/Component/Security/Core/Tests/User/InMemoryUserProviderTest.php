@@ -23,7 +23,7 @@ class InMemoryUserProviderTest extends TestCase
 
         $user = $provider->loadUserByUsername('fabien');
         $this->assertEquals('foo', $user->getPassword());
-        $this->assertEquals(array('ROLE_USER'), $user->getRoles());
+        $this->assertEquals(['ROLE_USER'], $user->getRoles());
         $this->assertFalse($user->isEnabled());
     }
 
@@ -35,23 +35,20 @@ class InMemoryUserProviderTest extends TestCase
 
         $refreshedUser = $provider->refreshUser($user);
         $this->assertEquals('foo', $refreshedUser->getPassword());
-        $this->assertEquals(array('ROLE_USER'), $refreshedUser->getRoles());
+        $this->assertEquals(['ROLE_USER'], $refreshedUser->getRoles());
         $this->assertFalse($refreshedUser->isEnabled());
         $this->assertFalse($refreshedUser->isCredentialsNonExpired());
     }
 
-    /**
-     * @return InMemoryUserProvider
-     */
-    protected function createProvider()
+    protected function createProvider(): InMemoryUserProvider
     {
-        return new InMemoryUserProvider(array(
-            'fabien' => array(
+        return new InMemoryUserProvider([
+            'fabien' => [
                 'password' => 'foo',
                 'enabled' => false,
-                'roles' => array('ROLE_USER'),
-            ),
-        ));
+                'roles' => ['ROLE_USER'],
+            ],
+        ]);
     }
 
     public function testCreateUser()
@@ -63,21 +60,17 @@ class InMemoryUserProviderTest extends TestCase
         $this->assertEquals('foo', $user->getPassword());
     }
 
-    /**
-     * @expectedException \LogicException
-     */
     public function testCreateUserAlreadyExist()
     {
+        $this->expectException('LogicException');
         $provider = new InMemoryUserProvider();
         $provider->createUser(new User('fabien', 'foo'));
         $provider->createUser(new User('fabien', 'foo'));
     }
 
-    /**
-     * @expectedException \Symfony\Component\Security\Core\Exception\UsernameNotFoundException
-     */
     public function testLoadUserByUsernameDoesNotExist()
     {
+        $this->expectException('Symfony\Component\Security\Core\Exception\UsernameNotFoundException');
         $provider = new InMemoryUserProvider();
         $provider->loadUserByUsername('fabien');
     }

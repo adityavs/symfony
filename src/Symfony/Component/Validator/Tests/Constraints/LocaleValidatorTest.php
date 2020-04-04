@@ -36,11 +36,9 @@ class LocaleValidatorTest extends ConstraintValidatorTestCase
         $this->assertNoViolation();
     }
 
-    /**
-     * @expectedException \Symfony\Component\Validator\Exception\UnexpectedTypeException
-     */
     public function testExpectsStringCompatibleType()
     {
+        $this->expectException('Symfony\Component\Validator\Exception\UnexpectedValueException');
         $this->validator->validate(new \stdClass(), new Locale());
     }
 
@@ -56,14 +54,15 @@ class LocaleValidatorTest extends ConstraintValidatorTestCase
 
     public function getValidLocales()
     {
-        return array(
-            array('en'),
-            array('en_US'),
-            array('pt'),
-            array('pt_PT'),
-            array('zh_Hans'),
-            array('fil_PH'),
-        );
+        return [
+            ['en'],
+            ['en_US'],
+            ['pt'],
+            ['pt_PT'],
+            ['zh_Hans'],
+            ['tl_PH'],
+            ['fil_PH'], // alias for "tl_PH"
+        ];
     }
 
     /**
@@ -71,9 +70,9 @@ class LocaleValidatorTest extends ConstraintValidatorTestCase
      */
     public function testInvalidLocales($locale)
     {
-        $constraint = new Locale(array(
+        $constraint = new Locale([
             'message' => 'myMessage',
-        ));
+        ]);
 
         $this->validator->validate($locale, $constraint);
 
@@ -85,9 +84,32 @@ class LocaleValidatorTest extends ConstraintValidatorTestCase
 
     public function getInvalidLocales()
     {
-        return array(
-            array('EN'),
-            array('foobar'),
-        );
+        return [
+            ['baz'],
+            ['foobar'],
+        ];
+    }
+
+    /**
+     * @dataProvider getUncanonicalizedLocales
+     */
+    public function testValidLocalesWithCanonicalization(string $locale)
+    {
+        $constraint = new Locale([
+            'message' => 'myMessage',
+        ]);
+
+        $this->validator->validate($locale, $constraint);
+
+        $this->assertNoViolation();
+    }
+
+    public function getUncanonicalizedLocales(): iterable
+    {
+        return [
+            ['en-US'],
+            ['es-AR'],
+            ['fr_FR.utf8'],
+        ];
     }
 }

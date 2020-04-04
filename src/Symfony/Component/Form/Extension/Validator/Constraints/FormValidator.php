@@ -13,6 +13,7 @@ namespace Symfony\Component\Form\Extension\Validator\Constraints;
 
 use Symfony\Component\Form\FormInterface;
 use Symfony\Component\Validator\Constraint;
+use Symfony\Component\Validator\Constraints\Composite;
 use Symfony\Component\Validator\Constraints\GroupSequence;
 use Symfony\Component\Validator\Constraints\Valid;
 use Symfony\Component\Validator\ConstraintValidator;
@@ -26,10 +27,10 @@ class FormValidator extends ConstraintValidator
     /**
      * {@inheritdoc}
      */
-    public function validate($form, Constraint $constraint)
+    public function validate($form, Constraint $formConstraint)
     {
-        if (!$constraint instanceof Form) {
-            throw new UnexpectedTypeException($constraint, __NAMESPACE__.'\Form');
+        if (!$formConstraint instanceof Form) {
+            throw new UnexpectedTypeException($formConstraint, Form::class);
         }
 
         if (!$form instanceof FormInterface) {
@@ -41,35 +42,42 @@ class FormValidator extends ConstraintValidator
 
         $validator = $this->context->getValidator()->inContext($this->context);
 
-        if ($form->isSynchronized()) {
+        if ($form->isSubmitted() && $form->isSynchronized()) {
             // Validate the form data only if transformation succeeded
             $groups = self::getValidationGroups($form);
+
+            if (!$groups) {
+                return;
+            }
+
             $data = $form->getData();
 
             // Validate the data against its own constraints
-            if ($form->isRoot() && (is_object($data) || is_array($data))) {
-                if (is_array($groups) && count($groups) > 0 || $groups instanceof GroupSequence && count($groups->groups) > 0) {
+            if ($form->isRoot() && (\is_object($data) || \is_array($data))) {
+                if (($groups && \is_array($groups)) || ($groups instanceof GroupSequence && $groups->groups)) {
                     $validator->atPath('data')->validate($form->getData(), null, $groups);
                 }
             }
 
             // Validate the data against the constraints defined
             // in the form
-            $constraints = $config->getOption('constraints', array());
+            $constraints = $config->getOption('constraints', []);
 
             if ($groups instanceof GroupSequence) {
                 $validator->atPath('data')->validate($form->getData(), $constraints, $groups);
                 // Otherwise validate a constraint only once for the first
                 // matching group
                 foreach ($groups as $group) {
-                    if (in_array($group, $constraint->groups)) {
-                        $validator->atPath('data')->validate($form->getData(), $constraint, $group);
-                        if (count($this->context->getViolations()) > 0) {
+                    if (\in_array($group, $formConstraint->groups)) {
+                        $validator->atPath('data')->validate($form->getData(), $formConstraint, $group);
+                        if (\count($this->context->getViolations()) > 0) {
                             break;
                         }
                     }
                 }
             } else {
+                $groupedConstraints = [];
+
                 foreach ($constraints as $constraint) {
                     // For the "Valid" constraint, validate the data in all groups
                     if ($constraint instanceof Valid) {
@@ -81,16 +89,22 @@ class FormValidator extends ConstraintValidator
                     // Otherwise validate a constraint only once for the first
                     // matching group
                     foreach ($groups as $group) {
-                        if (in_array($group, $constraint->groups)) {
-                            $validator->atPath('data')->validate($form->getData(), $constraint, $group);
+                        if (\in_array($group, $constraint->groups)) {
+                            $groupedConstraints[$group][] = $constraint;
 
                             // Prevent duplicate validation
-                            continue 2;
+                            if (!$constraint instanceof Composite) {
+                                continue 2;
+                            }
                         }
                     }
                 }
+
+                foreach ($groupedConstraints as $group => $constraint) {
+                    $validator->atPath('data')->validate($form->getData(), $constraint, $group);
+                }
             }
-        } else {
+        } elseif (!$form->isSynchronized()) {
             $childrenSynchronized = true;
 
             /** @var FormInterface $child */
@@ -111,21 +125,30 @@ class FormValidator extends ConstraintValidator
             if ($childrenSynchronized) {
                 $clientDataAsString = is_scalar($form->getViewData())
                     ? (string) $form->getViewData()
-                    : gettype($form->getViewData());
+                    : get_debug_type($form->getViewData());
 
-                $this->context->buildViolation($config->getOption('invalid_message'))
-                    ->setParameters(array_replace(array('{{ value }}' => $clientDataAsString), $config->getOption('invalid_message_parameters')))
+                $failure = $form->getTransformationFailure();
+
+                $this->context->setConstraint($formConstraint);
+                $this->context->buildViolation($failure->getInvalidMessage() ?? $config->getOption('invalid_message'))
+                    ->setParameters(array_replace(
+                        ['{{ value }}' => $clientDataAsString],
+                        $config->getOption('invalid_message_parameters'),
+                        $failure->getInvalidMessageParameters()
+                    ))
                     ->setInvalidValue($form->getViewData())
                     ->setCode(Form::NOT_SYNCHRONIZED_ERROR)
-                    ->setCause($form->getTransformationFailure())
+                    ->setCause($failure)
                     ->addViolation();
             }
         }
 
         // Mark the form with an error if it contains extra fields
-        if (!$config->getOption('allow_extra_fields') && count($form->getExtraData()) > 0) {
-            $this->context->buildViolation($config->getOption('extra_fields_message'))
-                ->setParameter('{{ extra_fields }}', implode('", "', array_keys($form->getExtraData())))
+        if (!$config->getOption('allow_extra_fields') && \count($form->getExtraData()) > 0) {
+            $this->context->setConstraint($formConstraint);
+            $this->context->buildViolation($config->getOption('extra_fields_message', ''))
+                ->setParameter('{{ extra_fields }}', '"'.implode('", "', array_keys($form->getExtraData())).'"')
+                ->setPlural(\count($form->getExtraData()))
                 ->setInvalidValue($form->getExtraData())
                 ->setCode(Form::NO_SUCH_FIELD_ERROR)
                 ->addViolation();
@@ -135,7 +158,7 @@ class FormValidator extends ConstraintValidator
     /**
      * Returns the validation groups of the given form.
      *
-     * @return array The validation groups
+     * @return string|GroupSequence|(string|GroupSequence)[] The validation groups
      */
     private static function getValidationGroups(FormInterface $form)
     {
@@ -164,21 +187,20 @@ class FormValidator extends ConstraintValidator
             $form = $form->getParent();
         } while (null !== $form);
 
-        return array(Constraint::DEFAULT_GROUP);
+        return [Constraint::DEFAULT_GROUP];
     }
 
     /**
      * Post-processes the validation groups option for a given form.
      *
-     * @param array|callable $groups The validation groups
-     * @param FormInterface  $form   The validated form
+     * @param string|GroupSequence|(string|GroupSequence)[]|callable $groups The validation groups
      *
-     * @return array The validation groups
+     * @return GroupSequence|(string|GroupSequence)[] The validation groups
      */
     private static function resolveValidationGroups($groups, FormInterface $form)
     {
-        if (!is_string($groups) && is_callable($groups)) {
-            $groups = call_user_func($groups, $form);
+        if (!\is_string($groups) && \is_callable($groups)) {
+            $groups = $groups($form);
         }
 
         if ($groups instanceof GroupSequence) {

@@ -26,9 +26,9 @@ class ResolveHotPathPassTest extends TestCase
 
         $container->register('foo')
             ->addTag('container.hot_path')
-            ->addArgument(new IteratorArgument(array(new Reference('lazy'))))
+            ->addArgument(new IteratorArgument([new Reference('lazy')]))
             ->addArgument(new Reference('service_container'))
-            ->addArgument(new Definition('', array(new Reference('bar'))))
+            ->addArgument(new Definition('', [new Reference('bar')]))
             ->addArgument(new Reference('baz', ContainerBuilder::IGNORE_ON_UNINITIALIZED_REFERENCE))
             ->addArgument(new Reference('missing'))
         ;
@@ -41,8 +41,8 @@ class ResolveHotPathPassTest extends TestCase
             ->addArgument(new Reference('lazy'))
             ->addArgument(new Reference('lazy'));
         $container->register('buz');
-        $container->register('deprec_with_tag')->setDeprecated()->addTag('container.hot_path');
-        $container->register('deprec_ref_notag')->setDeprecated();
+        $container->register('deprec_with_tag')->setDeprecated('vendor/package', '1.1', '%service_id%')->addTag('container.hot_path');
+        $container->register('deprec_ref_notag')->setDeprecated('vendor/package', '1.1', '%service_id%');
 
         (new ResolveHotPathPass())->process($container);
 

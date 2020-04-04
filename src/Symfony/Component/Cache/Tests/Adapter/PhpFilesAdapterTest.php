@@ -19,25 +19,21 @@ use Symfony\Component\Cache\Adapter\PhpFilesAdapter;
  */
 class PhpFilesAdapterTest extends AdapterTestCase
 {
-    protected $skippedTests = array(
+    protected $skippedTests = [
         'testDefaultLifeTime' => 'PhpFilesAdapter does not allow configuring a default lifetime.',
-    );
+    ];
 
-    public function createCachePool()
+    public function createCachePool(): CacheItemPoolInterface
     {
-        if (!PhpFilesAdapter::isSupported()) {
-            $this->markTestSkipped('OPcache extension is not enabled.');
-        }
-
         return new PhpFilesAdapter('sf-cache');
     }
 
-    public static function tearDownAfterClass()
+    public static function tearDownAfterClass(): void
     {
         FilesystemAdapterTest::rmdir(sys_get_temp_dir().'/symfony-cache');
     }
 
-    protected function isPruned(CacheItemPoolInterface $cache, $name)
+    protected function isPruned(CacheItemPoolInterface $cache, string $name): bool
     {
         $getFileMethod = (new \ReflectionObject($cache))->getMethod('getFile');
         $getFileMethod->setAccessible(true);

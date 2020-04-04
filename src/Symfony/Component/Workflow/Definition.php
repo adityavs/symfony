@@ -11,8 +11,9 @@
 
 namespace Symfony\Component\Workflow;
 
-use Symfony\Component\Workflow\Exception\InvalidArgumentException;
 use Symfony\Component\Workflow\Exception\LogicException;
+use Symfony\Component\Workflow\Metadata\InMemoryMetadataStore;
+use Symfony\Component\Workflow\Metadata\MetadataStoreInterface;
 
 /**
  * @author Fabien Potencier <fabien@symfony.com>
@@ -21,16 +22,17 @@ use Symfony\Component\Workflow\Exception\LogicException;
  */
 final class Definition
 {
-    private $places = array();
-    private $transitions = array();
-    private $initialPlace;
+    private $places = [];
+    private $transitions = [];
+    private $initialPlaces = [];
+    private $metadataStore;
 
     /**
-     * @param string[]     $places
-     * @param Transition[] $transitions
-     * @param string|null  $initialPlace
+     * @param string[]             $places
+     * @param Transition[]         $transitions
+     * @param string|string[]|null $initialPlaces
      */
-    public function __construct(array $places, array $transitions, string $initialPlace = null)
+    public function __construct(array $places, array $transitions, $initialPlaces = null, MetadataStoreInterface $metadataStore = null)
     {
         foreach ($places as $place) {
             $this->addPlace($place);
@@ -40,15 +42,17 @@ final class Definition
             $this->addTransition($transition);
         }
 
-        $this->setInitialPlace($initialPlace);
+        $this->setInitialPlaces($initialPlaces);
+
+        $this->metadataStore = $metadataStore ?: new InMemoryMetadataStore();
     }
 
     /**
-     * @return string|null
+     * @return string[]
      */
-    public function getInitialPlace()
+    public function getInitialPlaces(): array
     {
-        return $this->initialPlace;
+        return $this->initialPlaces;
     }
 
     /**
@@ -67,27 +71,32 @@ final class Definition
         return $this->transitions;
     }
 
-    private function setInitialPlace(string $place = null)
+    public function getMetadataStore(): MetadataStoreInterface
     {
-        if (null === $place) {
+        return $this->metadataStore;
+    }
+
+    private function setInitialPlaces($places = null)
+    {
+        if (!$places) {
             return;
         }
 
-        if (!isset($this->places[$place])) {
-            throw new LogicException(sprintf('Place "%s" cannot be the initial place as it does not exist.', $place));
+        $places = (array) $places;
+
+        foreach ($places as $place) {
+            if (!isset($this->places[$place])) {
+                throw new LogicException(sprintf('Place "%s" cannot be the initial place as it does not exist.', $place));
+            }
         }
 
-        $this->initialPlace = $place;
+        $this->initialPlaces = $places;
     }
 
     private function addPlace(string $place)
     {
-        if (!preg_match('{^[\w_-]+$}', $place)) {
-            throw new InvalidArgumentException(sprintf('The place "%s" contains invalid characters.', $place));
-        }
-
-        if (!count($this->places)) {
-            $this->initialPlace = $place;
+        if (!\count($this->places)) {
+            $this->initialPlaces = [$place];
         }
 
         $this->places[$place] = $place;

@@ -24,10 +24,22 @@ class ButtonTest extends TestCase
 
     private $factory;
 
-    protected function setUp()
+    protected function setUp(): void
     {
         $this->dispatcher = $this->getMockBuilder('Symfony\Component\EventDispatcher\EventDispatcherInterface')->getMock();
         $this->factory = $this->getMockBuilder('Symfony\Component\Form\FormFactoryInterface')->getMock();
+    }
+
+    public function testSetParentOnSubmittedButton()
+    {
+        $this->expectException('Symfony\Component\Form\Exception\AlreadySubmittedException');
+        $button = $this->getButtonBuilder('button')
+            ->getForm()
+        ;
+
+        $button->submit('');
+
+        $button->setParent($this->getFormBuilder()->getForm());
     }
 
     /**
@@ -35,13 +47,15 @@ class ButtonTest extends TestCase
      */
     public function testDisabledIfParentIsDisabled($parentDisabled, $buttonDisabled, $result)
     {
-        $form = $this->getFormBuilder('form')
+        $form = $this->getFormBuilder()
             ->setDisabled($parentDisabled)
-            ->getForm();
+            ->getForm()
+        ;
 
         $button = $this->getButtonBuilder('button')
             ->setDisabled($buttonDisabled)
-            ->getForm();
+            ->getForm()
+        ;
 
         $button->setParent($form);
 
@@ -50,13 +64,13 @@ class ButtonTest extends TestCase
 
     public function getDisabledStates()
     {
-        return array(
+        return [
             // parent, button, result
-            array(true, true, true),
-            array(true, false, true),
-            array(false, true, true),
-            array(false, false, false),
-        );
+            [true, true, true],
+            [true, false, true],
+            [false, true, true],
+            [false, false, false],
+        ];
     }
 
     private function getButtonBuilder($name)
@@ -64,8 +78,8 @@ class ButtonTest extends TestCase
         return new ButtonBuilder($name);
     }
 
-    private function getFormBuilder($name)
+    private function getFormBuilder()
     {
-        return new FormBuilder($name, null, $this->dispatcher, $this->factory);
+        return new FormBuilder('form', null, $this->dispatcher, $this->factory);
     }
 }

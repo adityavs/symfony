@@ -1,5 +1,5 @@
 {
-    "Version": "2.1.37.1",
+    "Version": "36.1",
     "Names": {
         "aa": "Afar",
         "ab": "Abchazisch",
@@ -29,6 +29,7 @@
         "aro": "Araona",
         "arp": "Arapaho",
         "arq": "Algerijns Arabisch",
+        "ars": "Nadjdi-Arabisch",
         "arw": "Arawak",
         "ary": "Marokkaans Arabisch",
         "arz": "Egyptisch Arabisch",
@@ -86,6 +87,7 @@
         "car": "Caribisch",
         "cay": "Cayuga",
         "cch": "Atsam",
+        "ccp": "Chakma",
         "ce": "Tsjetsjeens",
         "ceb": "Cebuano",
         "cgg": "Chiga",
@@ -354,7 +356,6 @@
         "ms": "Maleis",
         "mt": "Maltees",
         "mua": "Mundang",
-        "mul": "Meerdere talen",
         "mus": "Creek",
         "mwl": "Mirandees",
         "mwr": "Marwari",
@@ -370,7 +371,6 @@
         "nb": "Noors - Bokmål",
         "nd": "Noord-Ndebele",
         "nds": "Nedersaksisch",
-        "nds_NL": "Nederduits",
         "ne": "Nepalees",
         "new": "Newari",
         "ng": "Ndonga",
@@ -438,7 +438,6 @@
         "ro": "Roemeens",
         "rof": "Rombo",
         "rom": "Romani",
-        "root": "Root",
         "rtm": "Rotumaans",
         "ru": "Russisch",
         "rue": "Roetheens",
@@ -552,7 +551,6 @@
         "uga": "Oegaritisch",
         "uk": "Oekraïens",
         "umb": "Umbundu",
-        "und": "onbekende taal",
         "ur": "Urdu",
         "uz": "Oezbeeks",
         "vai": "Vai",
@@ -595,7 +593,9 @@
         "zh": "Chinees",
         "zu": "Zoeloe",
         "zun": "Zuni",
-        "zxx": "geen linguïstische inhoud",
         "zza": "Zaza"
+    },
+    "LocalizedNames": {
+        "nds_NL": "Nederduits"
     }
 }

@@ -18,6 +18,22 @@ use Symfony\Component\Validator\Test\ConstraintValidatorTestCase;
 
 class LanguageValidatorTest extends ConstraintValidatorTestCase
 {
+    private $defaultLocale;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->defaultLocale = \Locale::getDefault();
+    }
+
+    protected function tearDown(): void
+    {
+        parent::tearDown();
+
+        \Locale::setDefault($this->defaultLocale);
+    }
+
     protected function createValidator()
     {
         return new LanguageValidator();
@@ -37,11 +53,9 @@ class LanguageValidatorTest extends ConstraintValidatorTestCase
         $this->assertNoViolation();
     }
 
-    /**
-     * @expectedException \Symfony\Component\Validator\Exception\UnexpectedTypeException
-     */
     public function testExpectsStringCompatibleType()
     {
+        $this->expectException('Symfony\Component\Validator\Exception\UnexpectedValueException');
         $this->validator->validate(new \stdClass(), new Language());
     }
 
@@ -57,11 +71,10 @@ class LanguageValidatorTest extends ConstraintValidatorTestCase
 
     public function getValidLanguages()
     {
-        return array(
-            array('en'),
-            array('en_US'),
-            array('my'),
-        );
+        return [
+            ['en'],
+            ['my'],
+        ];
     }
 
     /**
@@ -69,9 +82,9 @@ class LanguageValidatorTest extends ConstraintValidatorTestCase
      */
     public function testInvalidLanguages($language)
     {
-        $constraint = new Language(array(
+        $constraint = new Language([
             'message' => 'myMessage',
-        ));
+        ]);
 
         $this->validator->validate($language, $constraint);
 
@@ -83,10 +96,59 @@ class LanguageValidatorTest extends ConstraintValidatorTestCase
 
     public function getInvalidLanguages()
     {
-        return array(
-            array('EN'),
-            array('foobar'),
-        );
+        return [
+            ['EN'],
+            ['foobar'],
+        ];
+    }
+
+    /**
+     * @dataProvider getValidAlpha3Languages
+     */
+    public function testValidAlpha3Languages($language)
+    {
+        $this->validator->validate($language, new Language([
+            'alpha3' => true,
+        ]));
+
+        $this->assertNoViolation();
+    }
+
+    public function getValidAlpha3Languages()
+    {
+        return [
+            ['deu'],
+            ['eng'],
+            ['fra'],
+        ];
+    }
+
+    /**
+     * @dataProvider getInvalidAlpha3Languages
+     */
+    public function testInvalidAlpha3Languages($language)
+    {
+        $constraint = new Language([
+            'alpha3' => true,
+            'message' => 'myMessage',
+        ]);
+
+        $this->validator->validate($language, $constraint);
+
+        $this->buildViolation('myMessage')
+            ->setParameter('{{ value }}', '"'.$language.'"')
+            ->setCode(Language::NO_SUCH_LANGUAGE_ERROR)
+            ->assertRaised();
+    }
+
+    public function getInvalidAlpha3Languages()
+    {
+        return [
+            ['foobar'],
+            ['en'],
+            ['ZZZ'],
+            ['zzz'],
+        ];
     }
 
     public function testValidateUsingCountrySpecificLocale()
@@ -96,9 +158,9 @@ class LanguageValidatorTest extends ConstraintValidatorTestCase
         \Locale::setDefault('fr_FR');
         $existingLanguage = 'en';
 
-        $this->validator->validate($existingLanguage, new Language(array(
+        $this->validator->validate($existingLanguage, new Language([
             'message' => 'aMessage',
-        )));
+        ]));
 
         $this->assertNoViolation();
     }

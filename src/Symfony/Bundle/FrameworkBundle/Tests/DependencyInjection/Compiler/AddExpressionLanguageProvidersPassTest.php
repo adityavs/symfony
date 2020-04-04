@@ -12,19 +12,19 @@
 namespace Symfony\Bundle\FrameworkBundle\Tests\DependencyInjection\Compiler;
 
 use PHPUnit\Framework\TestCase;
+use Symfony\Bundle\FrameworkBundle\DependencyInjection\Compiler\AddExpressionLanguageProvidersPass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Reference;
-use Symfony\Bundle\FrameworkBundle\DependencyInjection\Compiler\AddExpressionLanguageProvidersPass;
 
 class AddExpressionLanguageProvidersPassTest extends TestCase
 {
     public function testProcessForRouter()
     {
         $container = new ContainerBuilder();
-        $container->addCompilerPass(new AddExpressionLanguageProvidersPass());
+        $container->addCompilerPass(new AddExpressionLanguageProvidersPass(false));
 
-        $definition = new Definition('Symfony\Bundle\FrameworkBundle\Tests\DependencyInjection\Compiler\TestProvider');
+        $definition = new Definition('\stdClass');
         $definition->addTag('routing.expression_language_provider');
         $container->setDefinition('some_routing_provider', $definition->setPublic(true));
 
@@ -41,9 +41,9 @@ class AddExpressionLanguageProvidersPassTest extends TestCase
     public function testProcessForRouterAlias()
     {
         $container = new ContainerBuilder();
-        $container->addCompilerPass(new AddExpressionLanguageProvidersPass());
+        $container->addCompilerPass(new AddExpressionLanguageProvidersPass(false));
 
-        $definition = new Definition('Symfony\Bundle\FrameworkBundle\Tests\DependencyInjection\Compiler\TestProvider');
+        $definition = new Definition('\stdClass');
         $definition->addTag('routing.expression_language_provider');
         $container->setDefinition('some_routing_provider', $definition->setPublic(true));
 
@@ -57,47 +57,4 @@ class AddExpressionLanguageProvidersPassTest extends TestCase
         $this->assertEquals('addExpressionLanguageProvider', $calls[0][0]);
         $this->assertEquals(new Reference('some_routing_provider'), $calls[0][1][0]);
     }
-
-    public function testProcessForSecurity()
-    {
-        $container = new ContainerBuilder();
-        $container->addCompilerPass(new AddExpressionLanguageProvidersPass());
-
-        $definition = new Definition('Symfony\Bundle\FrameworkBundle\Tests\DependencyInjection\Compiler\TestProvider');
-        $definition->addTag('security.expression_language_provider');
-        $container->setDefinition('some_security_provider', $definition->setPublic(true));
-
-        $container->register('security.access.expression_voter', '\stdClass')->setPublic(true);
-        $container->compile();
-
-        $router = $container->getDefinition('security.access.expression_voter');
-        $calls = $router->getMethodCalls();
-        $this->assertCount(1, $calls);
-        $this->assertEquals('addExpressionLanguageProvider', $calls[0][0]);
-        $this->assertEquals(new Reference('some_security_provider'), $calls[0][1][0]);
-    }
-
-    public function testProcessForSecurityAlias()
-    {
-        $container = new ContainerBuilder();
-        $container->addCompilerPass(new AddExpressionLanguageProvidersPass());
-
-        $definition = new Definition('Symfony\Bundle\FrameworkBundle\Tests\DependencyInjection\Compiler\TestProvider');
-        $definition->addTag('security.expression_language_provider');
-        $container->setDefinition('some_security_provider', $definition->setPublic(true));
-
-        $container->register('my_security.access.expression_voter', '\stdClass')->setPublic(true);
-        $container->setAlias('security.access.expression_voter', 'my_security.access.expression_voter');
-        $container->compile();
-
-        $router = $container->getDefinition('my_security.access.expression_voter');
-        $calls = $router->getMethodCalls();
-        $this->assertCount(1, $calls);
-        $this->assertEquals('addExpressionLanguageProvider', $calls[0][0]);
-        $this->assertEquals(new Reference('some_security_provider'), $calls[0][1][0]);
-    }
-}
-
-class TestProvider
-{
 }

@@ -11,7 +11,7 @@
 
 namespace Symfony\Bridge\Doctrine\Form;
 
-use Doctrine\Common\Persistence\ManagerRegistry;
+use Doctrine\Persistence\ManagerRegistry;
 use Symfony\Bridge\Doctrine\Form\Type\EntityType;
 use Symfony\Component\Form\AbstractExtension;
 
@@ -26,9 +26,9 @@ class DoctrineOrmExtension extends AbstractExtension
 
     protected function loadTypes()
     {
-        return array(
+        return [
             new EntityType($this->registry),
-        );
+        ];
     }
 
     protected function loadTypeGuesser()

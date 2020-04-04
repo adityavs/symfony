@@ -11,9 +11,10 @@
 
 namespace Symfony\Component\Workflow\Event;
 
-use Symfony\Component\EventDispatcher\Event as BaseEvent;
 use Symfony\Component\Workflow\Marking;
 use Symfony\Component\Workflow\Transition;
+use Symfony\Component\Workflow\WorkflowInterface;
+use Symfony\Contracts\EventDispatcher\Event as BaseEvent;
 
 /**
  * @author Fabien Potencier <fabien@symfony.com>
@@ -24,20 +25,14 @@ class Event extends BaseEvent
     private $subject;
     private $marking;
     private $transition;
-    private $workflowName;
+    private $workflow;
 
-    /**
-     * @param object     $subject
-     * @param Marking    $marking
-     * @param Transition $transition
-     * @param string     $workflowName
-     */
-    public function __construct($subject, Marking $marking, Transition $transition, string $workflowName = 'unnamed')
+    public function __construct(object $subject, Marking $marking, Transition $transition = null, WorkflowInterface $workflow = null)
     {
         $this->subject = $subject;
         $this->marking = $marking;
         $this->transition = $transition;
-        $this->workflowName = $workflowName;
+        $this->workflow = $workflow;
     }
 
     public function getMarking()
@@ -55,8 +50,18 @@ class Event extends BaseEvent
         return $this->transition;
     }
 
+    public function getWorkflow(): WorkflowInterface
+    {
+        return $this->workflow;
+    }
+
     public function getWorkflowName()
     {
-        return $this->workflowName;
+        return $this->workflow->getName();
+    }
+
+    public function getMetadata(string $key, $subject)
+    {
+        return $this->workflow->getMetadataStore()->getMetadata($key, $subject);
     }
 }

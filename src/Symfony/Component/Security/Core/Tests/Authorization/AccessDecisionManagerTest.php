@@ -17,12 +17,10 @@ use Symfony\Component\Security\Core\Authorization\Voter\VoterInterface;
 
 class AccessDecisionManagerTest extends TestCase
 {
-    /**
-     * @expectedException \InvalidArgumentException
-     */
     public function testSetUnsupportedStrategy()
     {
-        new AccessDecisionManager(array($this->getVoter(VoterInterface::ACCESS_GRANTED)), 'fooBar');
+        $this->expectException('InvalidArgumentException');
+        new AccessDecisionManager([$this->getVoter(VoterInterface::ACCESS_GRANTED)], 'fooBar');
     }
 
     /**
@@ -33,89 +31,72 @@ class AccessDecisionManagerTest extends TestCase
         $token = $this->getMockBuilder('Symfony\Component\Security\Core\Authentication\Token\TokenInterface')->getMock();
         $manager = new AccessDecisionManager($voters, $strategy, $allowIfAllAbstainDecisions, $allowIfEqualGrantedDeniedDecisions);
 
-        $this->assertSame($expected, $manager->decide($token, array('ROLE_FOO')));
-    }
-
-    /**
-     * @dataProvider getStrategiesWith2RolesTests
-     */
-    public function testStrategiesWith2Roles($token, $strategy, $voter, $expected)
-    {
-        $manager = new AccessDecisionManager(array($voter), $strategy);
-
-        $this->assertSame($expected, $manager->decide($token, array('ROLE_FOO', 'ROLE_BAR')));
-    }
-
-    public function getStrategiesWith2RolesTests()
-    {
-        $token = $this->getMockBuilder('Symfony\Component\Security\Core\Authentication\Token\TokenInterface')->getMock();
-
-        return array(
-            array($token, 'affirmative', $this->getVoter(VoterInterface::ACCESS_DENIED), false),
-            array($token, 'affirmative', $this->getVoter(VoterInterface::ACCESS_GRANTED), true),
-
-            array($token, 'consensus', $this->getVoter(VoterInterface::ACCESS_DENIED), false),
-            array($token, 'consensus', $this->getVoter(VoterInterface::ACCESS_GRANTED), true),
-
-            array($token, 'unanimous', $this->getVoterFor2Roles($token, VoterInterface::ACCESS_DENIED, VoterInterface::ACCESS_DENIED), false),
-            array($token, 'unanimous', $this->getVoterFor2Roles($token, VoterInterface::ACCESS_DENIED, VoterInterface::ACCESS_GRANTED), false),
-            array($token, 'unanimous', $this->getVoterFor2Roles($token, VoterInterface::ACCESS_GRANTED, VoterInterface::ACCESS_DENIED), false),
-            array($token, 'unanimous', $this->getVoterFor2Roles($token, VoterInterface::ACCESS_GRANTED, VoterInterface::ACCESS_GRANTED), true),
-        );
-    }
-
-    protected function getVoterFor2Roles($token, $vote1, $vote2)
-    {
-        $voter = $this->getMockBuilder('Symfony\Component\Security\Core\Authorization\Voter\VoterInterface')->getMock();
-        $voter->expects($this->any())
-              ->method('vote')
-              ->will($this->returnValueMap(array(
-                  array($token, null, array('ROLE_FOO'), $vote1),
-                  array($token, null, array('ROLE_BAR'), $vote2),
-              )))
-        ;
-
-        return $voter;
+        $this->assertSame($expected, $manager->decide($token, ['ROLE_FOO']));
     }
 
     public function getStrategyTests()
     {
-        return array(
+        return [
             // affirmative
-            array(AccessDecisionManager::STRATEGY_AFFIRMATIVE, $this->getVoters(1, 0, 0), false, true, true),
-            array(AccessDecisionManager::STRATEGY_AFFIRMATIVE, $this->getVoters(1, 2, 0), false, true, true),
-            array(AccessDecisionManager::STRATEGY_AFFIRMATIVE, $this->getVoters(0, 1, 0), false, true, false),
-            array(AccessDecisionManager::STRATEGY_AFFIRMATIVE, $this->getVoters(0, 0, 1), false, true, false),
-            array(AccessDecisionManager::STRATEGY_AFFIRMATIVE, $this->getVoters(0, 0, 1), true, true, true),
+            [AccessDecisionManager::STRATEGY_AFFIRMATIVE, $this->getVoters(1, 0, 0), false, true, true],
+            [AccessDecisionManager::STRATEGY_AFFIRMATIVE, $this->getVoters(1, 2, 0), false, true, true],
+            [AccessDecisionManager::STRATEGY_AFFIRMATIVE, $this->getVoters(0, 1, 0), false, true, false],
+            [AccessDecisionManager::STRATEGY_AFFIRMATIVE, $this->getVoters(0, 0, 1), false, true, false],
+            [AccessDecisionManager::STRATEGY_AFFIRMATIVE, $this->getVoters(0, 0, 1), true, true, true],
 
             // consensus
-            array(AccessDecisionManager::STRATEGY_CONSENSUS, $this->getVoters(1, 0, 0), false, true, true),
-            array(AccessDecisionManager::STRATEGY_CONSENSUS, $this->getVoters(1, 2, 0), false, true, false),
-            array(AccessDecisionManager::STRATEGY_CONSENSUS, $this->getVoters(2, 1, 0), false, true, true),
+            [AccessDecisionManager::STRATEGY_CONSENSUS, $this->getVoters(1, 0, 0), false, true, true],
+            [AccessDecisionManager::STRATEGY_CONSENSUS, $this->getVoters(1, 2, 0), false, true, false],
+            [AccessDecisionManager::STRATEGY_CONSENSUS, $this->getVoters(2, 1, 0), false, true, true],
 
-            array(AccessDecisionManager::STRATEGY_CONSENSUS, $this->getVoters(0, 0, 1), false, true, false),
+            [AccessDecisionManager::STRATEGY_CONSENSUS, $this->getVoters(0, 0, 1), false, true, false],
 
-            array(AccessDecisionManager::STRATEGY_CONSENSUS, $this->getVoters(0, 0, 1), true, true, true),
+            [AccessDecisionManager::STRATEGY_CONSENSUS, $this->getVoters(0, 0, 1), true, true, true],
 
-            array(AccessDecisionManager::STRATEGY_CONSENSUS, $this->getVoters(2, 2, 0), false, true, true),
-            array(AccessDecisionManager::STRATEGY_CONSENSUS, $this->getVoters(2, 2, 1), false, true, true),
+            [AccessDecisionManager::STRATEGY_CONSENSUS, $this->getVoters(2, 2, 0), false, true, true],
+            [AccessDecisionManager::STRATEGY_CONSENSUS, $this->getVoters(2, 2, 1), false, true, true],
 
-            array(AccessDecisionManager::STRATEGY_CONSENSUS, $this->getVoters(2, 2, 0), false, false, false),
-            array(AccessDecisionManager::STRATEGY_CONSENSUS, $this->getVoters(2, 2, 1), false, false, false),
+            [AccessDecisionManager::STRATEGY_CONSENSUS, $this->getVoters(2, 2, 0), false, false, false],
+            [AccessDecisionManager::STRATEGY_CONSENSUS, $this->getVoters(2, 2, 1), false, false, false],
 
             // unanimous
-            array(AccessDecisionManager::STRATEGY_UNANIMOUS, $this->getVoters(1, 0, 0), false, true, true),
-            array(AccessDecisionManager::STRATEGY_UNANIMOUS, $this->getVoters(1, 0, 1), false, true, true),
-            array(AccessDecisionManager::STRATEGY_UNANIMOUS, $this->getVoters(1, 1, 0), false, true, false),
+            [AccessDecisionManager::STRATEGY_UNANIMOUS, $this->getVoters(1, 0, 0), false, true, true],
+            [AccessDecisionManager::STRATEGY_UNANIMOUS, $this->getVoters(1, 0, 1), false, true, true],
+            [AccessDecisionManager::STRATEGY_UNANIMOUS, $this->getVoters(1, 1, 0), false, true, false],
 
-            array(AccessDecisionManager::STRATEGY_UNANIMOUS, $this->getVoters(0, 0, 2), false, true, false),
-            array(AccessDecisionManager::STRATEGY_UNANIMOUS, $this->getVoters(0, 0, 2), true, true, true),
-        );
+            [AccessDecisionManager::STRATEGY_UNANIMOUS, $this->getVoters(0, 0, 2), false, true, false],
+            [AccessDecisionManager::STRATEGY_UNANIMOUS, $this->getVoters(0, 0, 2), true, true, true],
+
+            // priority
+            [AccessDecisionManager::STRATEGY_PRIORITY, [
+                $this->getVoter(VoterInterface::ACCESS_ABSTAIN),
+                $this->getVoter(VoterInterface::ACCESS_GRANTED),
+                $this->getVoter(VoterInterface::ACCESS_DENIED),
+                $this->getVoter(VoterInterface::ACCESS_DENIED),
+            ], true, true, true],
+
+            [AccessDecisionManager::STRATEGY_PRIORITY, [
+                $this->getVoter(VoterInterface::ACCESS_ABSTAIN),
+                $this->getVoter(VoterInterface::ACCESS_DENIED),
+                $this->getVoter(VoterInterface::ACCESS_GRANTED),
+                $this->getVoter(VoterInterface::ACCESS_GRANTED),
+            ], true, true, false],
+
+            [AccessDecisionManager::STRATEGY_PRIORITY, [
+                $this->getVoter(VoterInterface::ACCESS_ABSTAIN),
+                $this->getVoter(VoterInterface::ACCESS_ABSTAIN),
+            ], false, true, false],
+
+            [AccessDecisionManager::STRATEGY_PRIORITY, [
+                $this->getVoter(VoterInterface::ACCESS_ABSTAIN),
+                $this->getVoter(VoterInterface::ACCESS_ABSTAIN),
+            ], true, true, true],
+        ];
     }
 
     protected function getVoters($grants, $denies, $abstains)
     {
-        $voters = array();
+        $voters = [];
         for ($i = 0; $i < $grants; ++$i) {
             $voters[] = $this->getVoter(VoterInterface::ACCESS_GRANTED);
         }
@@ -134,7 +115,7 @@ class AccessDecisionManagerTest extends TestCase
         $voter = $this->getMockBuilder('Symfony\Component\Security\Core\Authorization\Voter\VoterInterface')->getMock();
         $voter->expects($this->any())
               ->method('vote')
-              ->will($this->returnValue($vote));
+              ->willReturn($vote);
 
         return $voter;
     }

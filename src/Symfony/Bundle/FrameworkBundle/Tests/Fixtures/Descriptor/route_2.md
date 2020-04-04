@@ -1,13 +1,14 @@
 - Path: /name/add
-- Path Regex: #^/name/add$#s
+- Path Regex: #PATH_REGEX#
 - Host: localhost
-- Host Regex: #^localhost$#si
+- Host Regex: #HOST_REGEX#
 - Scheme: http|https
 - Method: PUT|POST
-- Class: Symfony\Component\Routing\Route
+- Class: Symfony\Bundle\FrameworkBundle\Tests\Console\Descriptor\RouteStub
 - Defaults: NONE
 - Requirements: NO CUSTOM
 - Options: 
     - `compiler_class`: Symfony\Component\Routing\RouteCompiler
     - `opt1`: val1
     - `opt2`: val2
+- Condition: context.getMethod() in ['GET', 'HEAD', 'POST']

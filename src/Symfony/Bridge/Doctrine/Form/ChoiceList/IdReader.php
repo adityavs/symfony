@@ -11,8 +11,8 @@
 
 namespace Symfony\Bridge\Doctrine\Form\ChoiceList;
 
-use Doctrine\Common\Persistence\Mapping\ClassMetadata;
-use Doctrine\Common\Persistence\ObjectManager;
+use Doctrine\Persistence\Mapping\ClassMetadata;
+use Doctrine\Persistence\ObjectManager;
 use Symfony\Component\Form\Exception\RuntimeException;
 
 /**
@@ -42,8 +42,8 @@ class IdReader
 
         $this->om = $om;
         $this->classMetadata = $classMetadata;
-        $this->singleId = 1 === count($ids);
-        $this->intId = $this->singleId && in_array($idType, array('integer', 'smallint', 'bigint'));
+        $this->singleId = 1 === \count($ids);
+        $this->intId = $this->singleId && \in_array($idType, ['integer', 'smallint', 'bigint']);
         $this->idField = current($ids);
 
         // single field association are resolved, since the schema column could be an int
@@ -84,21 +84,16 @@ class IdReader
      *
      * This method assumes that the object has a single-column ID.
      *
-     * @param object $object The object
-     *
-     * @return mixed The ID value
+     * @return string The ID value
      */
-    public function getIdValue($object)
+    public function getIdValue(object $object = null)
     {
         if (!$object) {
-            return;
+            return '';
         }
 
         if (!$this->om->contains($object)) {
-            throw new RuntimeException(
-                'Entities passed to the choice field must be managed. Maybe '.
-                'persist them in the entity manager?'
-            );
+            throw new RuntimeException(sprintf('Entity of type "%s" passed to the choice field must be managed. Maybe you forget to persist it in the entity manager?', get_debug_type($object)));
         }
 
         $this->om->initializeObject($object);
@@ -109,7 +104,7 @@ class IdReader
             $idValue = $this->associationIdReader->getIdValue($idValue);
         }
 
-        return $idValue;
+        return (string) $idValue;
     }
 
     /**

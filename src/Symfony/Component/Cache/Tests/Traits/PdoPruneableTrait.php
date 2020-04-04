@@ -13,7 +13,7 @@ namespace Symfony\Component\Cache\Tests\Traits;
 
 trait PdoPruneableTrait
 {
-    protected function isPruned($cache, $name)
+    protected function isPruned($cache, string $name): bool
     {
         $o = new \ReflectionObject($cache);
 
@@ -29,6 +29,6 @@ trait PdoPruneableTrait
         $select->bindValue(':id', sprintf('%%%s', $name));
         $select->execute();
 
-        return 0 === count($select->fetchAll(\PDO::FETCH_COLUMN));
+        return 0 === \count($select->fetchAll(\PDO::FETCH_COLUMN));
     }
 }

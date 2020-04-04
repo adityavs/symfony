@@ -11,11 +11,12 @@
 
 namespace Symfony\Component\Form\DependencyInjection;
 
+use Symfony\Component\DependencyInjection\Argument\ArgumentInterface;
 use Symfony\Component\DependencyInjection\Argument\IteratorArgument;
+use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\Compiler\PriorityTaggedServiceTrait;
 use Symfony\Component\DependencyInjection\Compiler\ServiceLocatorTagPass;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
-use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\Exception\InvalidArgumentException;
 use Symfony\Component\DependencyInjection\Reference;
 
@@ -51,7 +52,7 @@ class FormPass implements CompilerPassInterface
         }
 
         $definition = $container->getDefinition($this->formExtensionService);
-        if (new IteratorArgument(array()) != $definition->getArgument(2)) {
+        if (new IteratorArgument([]) != $definition->getArgument(2)) {
             return;
         }
         $definition->replaceArgument(0, $this->processFormTypes($container));
@@ -59,11 +60,11 @@ class FormPass implements CompilerPassInterface
         $definition->replaceArgument(2, $this->processFormTypeGuessers($container));
     }
 
-    private function processFormTypes(ContainerBuilder $container)
+    private function processFormTypes(ContainerBuilder $container): Reference
     {
         // Get service locator argument
-        $servicesMap = array();
-        $namespaces = array('Symfony\Component\Form\Extension\Core\Type' => true);
+        $servicesMap = [];
+        $namespaces = ['Symfony\Component\Form\Extension\Core\Type' => true];
 
         // Builds an array with fully-qualified type class names as keys and service IDs as values
         foreach ($container->findTaggedServiceIds($this->formTypeTag, true) as $serviceId => $tag) {
@@ -82,23 +83,33 @@ class FormPass implements CompilerPassInterface
         return ServiceLocatorTagPass::register($container, $servicesMap);
     }
 
-    private function processFormTypeExtensions(ContainerBuilder $container)
+    private function processFormTypeExtensions(ContainerBuilder $container): array
     {
-        $typeExtensions = array();
-        $typeExtensionsClasses = array();
+        $typeExtensions = [];
+        $typeExtensionsClasses = [];
         foreach ($this->findAndSortTaggedServices($this->formTypeExtensionTag, $container) as $reference) {
             $serviceId = (string) $reference;
             $serviceDefinition = $container->getDefinition($serviceId);
 
             $tag = $serviceDefinition->getTag($this->formTypeExtensionTag);
-            if (isset($tag[0]['extended_type'])) {
-                $extendedType = $tag[0]['extended_type'];
-            } else {
-                throw new InvalidArgumentException(sprintf('"%s" tagged services must have the extended type configured using the extended_type/extended-type attribute, none was configured for the "%s" service.', $this->formTypeExtensionTag, $serviceId));
-            }
+            $typeExtensionClass = $container->getParameterBag()->resolveValue($serviceDefinition->getClass());
 
-            $typeExtensions[$extendedType][] = new Reference($serviceId);
-            $typeExtensionsClasses[] = $serviceDefinition->getClass();
+            if (isset($tag[0]['extended_type'])) {
+                $typeExtensions[$tag[0]['extended_type']][] = new Reference($serviceId);
+                $typeExtensionsClasses[] = $typeExtensionClass;
+            } else {
+                $extendsTypes = false;
+
+                $typeExtensionsClasses[] = $typeExtensionClass;
+                foreach ($typeExtensionClass::getExtendedTypes() as $extendedType) {
+                    $typeExtensions[$extendedType][] = new Reference($serviceId);
+                    $extendsTypes = true;
+                }
+
+                if (!$extendsTypes) {
+                    throw new InvalidArgumentException(sprintf('The getExtendedTypes() method for service "%s" does not return any extended types.', $serviceId));
+                }
+            }
         }
 
         foreach ($typeExtensions as $extendedType => $extensions) {
@@ -113,10 +124,10 @@ class FormPass implements CompilerPassInterface
         return $typeExtensions;
     }
 
-    private function processFormTypeGuessers(ContainerBuilder $container)
+    private function processFormTypeGuessers(ContainerBuilder $container): ArgumentInterface
     {
-        $guessers = array();
-        $guessersClasses = array();
+        $guessers = [];
+        $guessersClasses = [];
         foreach ($container->findTaggedServiceIds($this->formTypeGuesserTag, true) as $serviceId => $tags) {
             $guessers[] = new Reference($serviceId);
 

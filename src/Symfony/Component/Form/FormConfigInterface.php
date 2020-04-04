@@ -18,6 +18,8 @@ use Symfony\Component\PropertyAccess\PropertyPathInterface;
  * The configuration of a {@link Form} object.
  *
  * @author Bernhard Schussek <bschussek@gmail.com>
+ *
+ * @method callable|null getIsEmptyCallback() Returns a callable that takes the model data as argument and that returns if it is empty or not - not implementing it is deprecated since Symfony 5.1
  */
 interface FormConfigInterface
 {
@@ -38,7 +40,7 @@ interface FormConfigInterface
     /**
      * Returns the property path that the form should be mapped to.
      *
-     * @return null|PropertyPathInterface The property path
+     * @return PropertyPathInterface|null The property path
      */
     public function getPropertyPath();
 
@@ -70,15 +72,17 @@ interface FormConfigInterface
      * This property is independent of whether the form actually has
      * children. A form can be compound and have no children at all, like
      * for example an empty collection form.
+     * The contrary is not possible, a form which is not compound
+     * cannot have any children.
      *
      * @return bool Whether the form is compound
      */
     public function getCompound();
 
     /**
-     * Returns the form types used to construct the form.
+     * Returns the resolved form type used to construct the form.
      *
-     * @return ResolvedFormTypeInterface The form's type
+     * @return ResolvedFormTypeInterface The form's resolved type
      */
     public function getType();
 
@@ -97,9 +101,9 @@ interface FormConfigInterface
     public function getModelTransformers();
 
     /**
-     * Returns the data mapper of the form.
+     * Returns the data mapper of the compound form or null for a simple form.
      *
-     * @return DataMapperInterface The data mapper
+     * @return DataMapperInterface|null The data mapper
      */
     public function getDataMapper();
 
@@ -125,9 +129,15 @@ interface FormConfigInterface
     public function getErrorBubbling();
 
     /**
-     * Returns the data that should be returned when the form is empty.
+     * Used when the view data is empty on submission.
      *
-     * @return mixed The data returned if the form is empty
+     * When the form is compound it will also be used to map the
+     * children data.
+     *
+     * The empty data must match the view format as it will passed to the first view transformer's
+     * "reverseTransform" method.
+     *
+     * @return mixed The data used when the submitted form is initially empty
      */
     public function getEmptyData();
 
@@ -141,21 +151,18 @@ interface FormConfigInterface
     /**
      * Returns whether the attribute with the given name exists.
      *
-     * @param string $name The attribute name
-     *
      * @return bool Whether the attribute exists
      */
-    public function hasAttribute($name);
+    public function hasAttribute(string $name);
 
     /**
      * Returns the value of the given attribute.
      *
-     * @param string $name    The attribute name
-     * @param mixed  $default The value returned if the attribute does not exist
+     * @param mixed $default The value returned if the attribute does not exist
      *
      * @return mixed The attribute value
      */
-    public function getAttribute($name, $default = null);
+    public function getAttribute(string $name, $default = null);
 
     /**
      * Returns the initial data of the form.
@@ -165,9 +172,9 @@ interface FormConfigInterface
     public function getData();
 
     /**
-     * Returns the class of the form data or null if the data is scalar or an array.
+     * Returns the class of the view data or null if the data is scalar or an array.
      *
-     * @return null|string The data class or null
+     * @return string|null The data class or null
      */
     public function getDataClass();
 
@@ -228,19 +235,16 @@ interface FormConfigInterface
     /**
      * Returns whether a specific option exists.
      *
-     * @param string $name The option name,
-     *
      * @return bool Whether the option exists
      */
-    public function hasOption($name);
+    public function hasOption(string $name);
 
     /**
      * Returns the value of a specific option.
      *
-     * @param string $name    The option name
-     * @param mixed  $default The value returned if the option does not exist
+     * @param mixed $default The value returned if the option does not exist
      *
      * @return mixed The option value
      */
-    public function getOption($name, $default = null);
+    public function getOption(string $name, $default = null);
 }

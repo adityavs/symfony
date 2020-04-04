@@ -11,9 +11,9 @@
 
 namespace Symfony\Bridge\Doctrine\Tests\Fixtures;
 
-use Doctrine\ORM\Mapping\Id;
 use Doctrine\ORM\Mapping\Column;
 use Doctrine\ORM\Mapping\Entity;
+use Doctrine\ORM\Mapping\Id;
 use Symfony\Component\Security\Core\User\UserInterface;
 
 /** @Entity */
@@ -35,19 +35,19 @@ class User implements UserInterface
         $this->name = $name;
     }
 
-    public function getRoles()
+    public function getRoles(): array
     {
     }
 
-    public function getPassword()
+    public function getPassword(): ?string
     {
     }
 
-    public function getSalt()
+    public function getSalt(): ?string
     {
     }
 
-    public function getUsername()
+    public function getUsername(): string
     {
         return $this->name;
     }

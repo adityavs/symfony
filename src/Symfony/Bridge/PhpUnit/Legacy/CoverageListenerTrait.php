@@ -11,9 +11,9 @@
 
 namespace Symfony\Bridge\PhpUnit\Legacy;
 
-use PHPUnit\Framework\Test;
 use PHPUnit\Framework\TestCase;
 use PHPUnit\Framework\Warning;
+use PHPUnit\Util\Test;
 
 /**
  * PHP 5.3 compatible trait-like shared implementation.
@@ -32,7 +32,7 @@ class CoverageListenerTrait
     {
         $this->sutFqcnResolver = $sutFqcnResolver;
         $this->warningOnSutNotFound = $warningOnSutNotFound;
-        $this->warnings = array();
+        $this->warnings = [];
     }
 
     public function startTest($test)
@@ -43,7 +43,7 @@ class CoverageListenerTrait
 
         $annotations = $test->getAnnotations();
 
-        $ignoredAnnotations = array('covers', 'coversDefaultClass', 'coversNothing');
+        $ignoredAnnotations = ['covers', 'coversDefaultClass', 'coversNothing'];
 
         foreach ($ignoredAnnotations as $annotation) {
             if (isset($annotations['class'][$annotation]) || isset($annotations['method'][$annotation])) {
@@ -59,28 +59,23 @@ class CoverageListenerTrait
                 if (method_exists($test->getTestResultObject(), 'addWarning') && class_exists(Warning::class)) {
                     $test->getTestResultObject()->addWarning($test, new Warning($message), 0);
                 } else {
-                    $this->warnings[] = sprintf("%s::%s\n%s", get_class($test), $test->getName(), $message);
+                    $this->warnings[] = sprintf("%s::%s\n%s", \get_class($test), $test->getName(), $message);
                 }
             }
 
             return;
         }
 
-        $testClass = \PHPUnit\Util\Test::class;
-        if (!class_exists($testClass, false)) {
-            $testClass = \PHPUnit_Util_Test::class;
-        }
-
-        $r = new \ReflectionProperty($testClass, 'annotationCache');
+        $r = new \ReflectionProperty(Test::class, 'annotationCache');
         $r->setAccessible(true);
 
         $cache = $r->getValue();
-        $cache = array_replace_recursive($cache, array(
-            get_class($test) => array(
-                'covers' => array($sutFqcn),
-            ),
-        ));
-        $r->setValue($testClass, $cache);
+        $cache = array_replace_recursive($cache, [
+            \get_class($test) => [
+                'covers' => \is_array($sutFqcn) ? $sutFqcn : [$sutFqcn],
+            ],
+        ]);
+        $r->setValue(Test::class, $cache);
     }
 
     private function findSutFqcn($test)
@@ -91,16 +86,22 @@ class CoverageListenerTrait
             return $resolver($test);
         }
 
-        $class = get_class($test);
+        $class = \get_class($test);
 
         $sutFqcn = str_replace('\\Tests\\', '\\', $class);
         $sutFqcn = preg_replace('{Test$}', '', $sutFqcn);
 
-        if (!class_exists($sutFqcn)) {
-            return;
-        }
+        return class_exists($sutFqcn) ? $sutFqcn : null;
+    }
 
-        return $sutFqcn;
+    public function __sleep()
+    {
+        throw new \BadMethodCallException('Cannot serialize '.__CLASS__);
+    }
+
+    public function __wakeup()
+    {
+        throw new \BadMethodCallException('Cannot unserialize '.__CLASS__);
     }
 
     public function __destruct()

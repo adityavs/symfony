@@ -17,9 +17,9 @@ use Symfony\Component\ExpressionLanguage\ExpressionPhpFunction;
 
 class TestProvider implements ExpressionFunctionProviderInterface
 {
-    public function getFunctions()
+    public function getFunctions(): array
     {
-        return array(
+        return [
             new ExpressionFunction('identity', function ($input) {
                 return $input;
             }, function (array $values, $input) {
@@ -31,7 +31,7 @@ class TestProvider implements ExpressionFunctionProviderInterface
             ExpressionFunction::fromPhp('\strtolower'),
 
             ExpressionFunction::fromPhp('Symfony\Component\ExpressionLanguage\Tests\Fixtures\fn_namespaced', 'fn_namespaced'),
-        );
+        ];
     }
 }
 

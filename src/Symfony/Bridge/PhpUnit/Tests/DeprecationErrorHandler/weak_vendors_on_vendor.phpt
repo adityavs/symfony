@@ -1,9 +1,10 @@
 --TEST--
-Test DeprecationErrorHandler in weak vendors mode on vendor file
+Test DeprecationErrorHandler with no self deprecations on vendor deprecation
 --FILE--
 <?php
 
-putenv('SYMFONY_DEPRECATIONS_HELPER=weak_vendors');
+$k = 'SYMFONY_DEPRECATIONS_HELPER';
+putenv($k.'='.$_SERVER[$k] = $_ENV[$k] = 'max[self]=0');
 putenv('ANSICON');
 putenv('ConEmuANSI');
 putenv('TERM');
@@ -20,10 +21,21 @@ require __DIR__.'/fake_vendor/acme/lib/deprecation_riddled.php';
 
 ?>
 --EXPECTF--
-Unsilenced deprecation notices (2)
+Unsilenced deprecation notices (3)
 
-Remaining vendor deprecation notices (1)
+  2x: unsilenced foo deprecation
+    2x in FooTestCase::testLegacyFoo
 
-Legacy deprecation notices (1)
+  1x: unsilenced bar deprecation
+    1x in FooTestCase::testNonLegacyBar
+
+Remaining direct deprecation notices (1)
+
+  1x: silenced bar deprecation
+    1x in FooTestCase::testNonLegacyBar
+
+Legacy deprecation notices (2)
 
 Other deprecation notices (1)
+
+  1x: root deprecation

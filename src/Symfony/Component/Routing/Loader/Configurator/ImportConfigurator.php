@@ -18,6 +18,7 @@ use Symfony\Component\Routing\RouteCollection;
  */
 class ImportConfigurator
 {
+    use Traits\PrefixTrait;
     use Traits\RouteTrait;
 
     private $parent;
@@ -36,11 +37,25 @@ class ImportConfigurator
     /**
      * Sets the prefix to add to the path of all child routes.
      *
+     * @param string|array $prefix the prefix, or the localized prefixes
+     *
      * @return $this
      */
-    final public function prefix(string $prefix)
+    final public function prefix($prefix, bool $trailingSlashOnRoot = true): self
     {
-        $this->route->addPrefix($prefix);
+        $this->addPrefix($this->route, $prefix, $trailingSlashOnRoot);
+
+        return $this;
+    }
+
+    /**
+     * Sets the prefix to add to the name of all child routes.
+     *
+     * @return $this
+     */
+    final public function namePrefix(string $namePrefix): self
+    {
+        $this->route->addNamePrefix($namePrefix);
 
         return $this;
     }

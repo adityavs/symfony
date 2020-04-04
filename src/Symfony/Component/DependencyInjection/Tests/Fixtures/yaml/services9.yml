@@ -103,7 +103,10 @@ services:
         public: true
     deprecated_service:
         class: stdClass
-        deprecated: The "%service_id%" service is deprecated. You should stop using it, as it will soon be removed.
+        deprecated:
+            message: The "%service_id%" service is deprecated. You should stop using it, as it will be removed in the future.
+            package: vendor/package
+            version: 1.1
         public: true
     new_factory:
         class: FactoryClass
@@ -124,7 +127,10 @@ services:
         public: true
     factory_simple:
         class: SimpleFactoryClass
-        deprecated: The "%service_id%" service is deprecated. You should stop using it, as it will soon be removed.
+        deprecated:
+            message: The "%service_id%" service is deprecated. You should stop using it, as it will be removed in the future.
+            package: vendor/package
+            version: 1.1
         public: false
         arguments: ['foo']
     factory_service_simple:
@@ -157,17 +163,31 @@ services:
     tagged_iterator:
         class: Bar
         arguments:
-            - !tagged foo
+            - !tagged_iterator foo
         public: true
     Psr\Container\ContainerInterface:
         alias: service_container
         public: false
+        deprecated:
+            package: symfony/dependency-injection
+            version: 5.1
+            message: The "%alias_id%" autowiring alias is deprecated. Define it explicitly in your app if you want to keep using it.
     Symfony\Component\DependencyInjection\ContainerInterface:
         alias: service_container
         public: false
+        deprecated:
+            package: symfony/dependency-injection
+            version: 5.1
+            message: The "%alias_id%" autowiring alias is deprecated. Define it explicitly in your app if you want to keep using it.
     alias_for_foo:
         alias: 'foo'
         public: true
     alias_for_alias:
         alias: 'foo'
         public: true
+    runtime_error:
+        class: stdClass
+        arguments: ['@errored_definition']
+        public: true
+    errored_definition:
+        class: stdClass

@@ -11,7 +11,9 @@
 
 namespace Symfony\Component\Cache\Tests\Adapter;
 
+use Psr\Cache\CacheItemPoolInterface;
 use Symfony\Component\Cache\Adapter\ArrayAdapter;
+use Symfony\Component\Cache\Adapter\FilesystemAdapter;
 use Symfony\Component\Cache\Adapter\ProxyAdapter;
 
 /**
@@ -19,8 +21,12 @@ use Symfony\Component\Cache\Adapter\ProxyAdapter;
  */
 class NamespacedProxyAdapterTest extends ProxyAdapterTest
 {
-    public function createCachePool($defaultLifetime = 0)
+    public function createCachePool(int $defaultLifetime = 0, string $testMethod = null): CacheItemPoolInterface
     {
+        if ('testGetMetadata' === $testMethod) {
+            return new ProxyAdapter(new FilesystemAdapter(), 'foo', $defaultLifetime);
+        }
+
         return new ProxyAdapter(new ArrayAdapter($defaultLifetime), 'foo', $defaultLifetime);
     }
 }

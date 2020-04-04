@@ -1,9 +1,9 @@
 {
-    "Version": "2.1.37.5",
+    "Version": "36.1",
     "Names": {
         "Arab": "arabisk",
         "Armn": "armenskt",
-        "Beng": "bengali",
+        "Beng": "bangla",
         "Bopo": "bopomofo",
         "Brai": "blindaskrift",
         "Cyrl": "kyrilliskt",
@@ -32,7 +32,7 @@
         "Mlym": "malayalam",
         "Mong": "mongolsk",
         "Mymr": "myanmarskt",
-        "Orya": "oriya",
+        "Orya": "odia",
         "Sinh": "sinhala",
         "Taml": "tamilskt",
         "Telu": "telugu",
@@ -43,7 +43,6 @@
         "Zsye": "emoji",
         "Zsym": "tekin",
         "Zxxx": "óskriva",
-        "Zyyy": "vanlig",
-        "Zzzz": "ókend skrift"
+        "Zyyy": "vanlig"
     }
 }

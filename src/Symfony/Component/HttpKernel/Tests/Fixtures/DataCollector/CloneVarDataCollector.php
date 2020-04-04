@@ -24,14 +24,14 @@ class CloneVarDataCollector extends DataCollector
         $this->varToClone = $varToClone;
     }
 
-    public function collect(Request $request, Response $response, \Exception $exception = null)
+    public function collect(Request $request, Response $response, \Throwable $exception = null)
     {
         $this->data = $this->cloneVar($this->varToClone);
     }
 
     public function reset()
     {
-        $this->data = array();
+        $this->data = [];
     }
 
     public function getData()
@@ -39,7 +39,7 @@ class CloneVarDataCollector extends DataCollector
         return $this->data;
     }
 
-    public function getName()
+    public function getName(): string
     {
         return 'clone_var';
     }

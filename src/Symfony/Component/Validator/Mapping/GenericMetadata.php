@@ -12,6 +12,8 @@
 namespace Symfony\Component\Validator\Mapping;
 
 use Symfony\Component\Validator\Constraint;
+use Symfony\Component\Validator\Constraints\DisableAutoMapping;
+use Symfony\Component\Validator\Constraints\EnableAutoMapping;
 use Symfony\Component\Validator\Constraints\Traverse;
 use Symfony\Component\Validator\Constraints\Valid;
 use Symfony\Component\Validator\Exception\ConstraintDefinitionException;
@@ -32,7 +34,7 @@ class GenericMetadata implements MetadataInterface
      *           class' serialized representation. Do not access it. Use
      *           {@link getConstraints()} and {@link findConstraints()} instead.
      */
-    public $constraints = array();
+    public $constraints = [];
 
     /**
      * @var array
@@ -41,7 +43,7 @@ class GenericMetadata implements MetadataInterface
      *           class' serialized representation. Do not access it. Use
      *           {@link findConstraints()} instead.
      */
-    public $constraintsByGroup = array();
+    public $constraintsByGroup = [];
 
     /**
      * The strategy for cascading objects.
@@ -74,18 +76,32 @@ class GenericMetadata implements MetadataInterface
     public $traversalStrategy = TraversalStrategy::NONE;
 
     /**
+     * Is auto-mapping enabled?
+     *
+     * @var int
+     *
+     * @see AutoMappingStrategy
+     *
+     * @internal This property is public in order to reduce the size of the
+     *           class' serialized representation. Do not access it. Use
+     *           {@link getAutoMappingStrategy()} instead.
+     */
+    public $autoMappingStrategy = AutoMappingStrategy::NONE;
+
+    /**
      * Returns the names of the properties that should be serialized.
      *
      * @return string[]
      */
     public function __sleep()
     {
-        return array(
+        return [
             'constraints',
             'constraintsByGroup',
             'cascadingStrategy',
             'traversalStrategy',
-        );
+            'autoMappingStrategy',
+        ];
     }
 
     /**
@@ -95,8 +111,8 @@ class GenericMetadata implements MetadataInterface
     {
         $constraints = $this->constraints;
 
-        $this->constraints = array();
-        $this->constraintsByGroup = array();
+        $this->constraints = [];
+        $this->constraintsByGroup = [];
 
         foreach ($constraints as $constraint) {
             $this->addConstraint(clone $constraint);
@@ -122,11 +138,7 @@ class GenericMetadata implements MetadataInterface
     public function addConstraint(Constraint $constraint)
     {
         if ($constraint instanceof Traverse) {
-            throw new ConstraintDefinitionException(sprintf(
-                'The constraint "%s" can only be put on classes. Please use '.
-                '"Symfony\Component\Validator\Constraints\Valid" instead.',
-                get_class($constraint)
-            ));
+            throw new ConstraintDefinitionException(sprintf('The constraint "%s" can only be put on classes. Please use "Symfony\Component\Validator\Constraints\Valid" instead.', get_debug_type($constraint)));
         }
 
         if ($constraint instanceof Valid && null === $constraint->groups) {
@@ -138,6 +150,13 @@ class GenericMetadata implements MetadataInterface
                 $this->traversalStrategy = TraversalStrategy::NONE;
             }
 
+            return $this;
+        }
+
+        if ($constraint instanceof DisableAutoMapping || $constraint instanceof EnableAutoMapping) {
+            $this->autoMappingStrategy = $constraint instanceof EnableAutoMapping ? AutoMappingStrategy::ENABLED : AutoMappingStrategy::DISABLED;
+
+            // The constraint is not added
             return $this;
         }
 
@@ -181,7 +200,7 @@ class GenericMetadata implements MetadataInterface
      */
     public function hasConstraints()
     {
-        return count($this->constraints) > 0;
+        return \count($this->constraints) > 0;
     }
 
     /**
@@ -189,11 +208,9 @@ class GenericMetadata implements MetadataInterface
      *
      * Aware of the global group (* group).
      */
-    public function findConstraints($group)
+    public function findConstraints(string $group)
     {
-        return isset($this->constraintsByGroup[$group])
-            ? $this->constraintsByGroup[$group]
-            : array();
+        return $this->constraintsByGroup[$group] ?? [];
     }
 
     /**
@@ -210,5 +227,13 @@ class GenericMetadata implements MetadataInterface
     public function getTraversalStrategy()
     {
         return $this->traversalStrategy;
+    }
+
+    /**
+     * @see AutoMappingStrategy
+     */
+    public function getAutoMappingStrategy(): int
+    {
+        return $this->autoMappingStrategy;
     }
 }

@@ -12,8 +12,9 @@
 namespace Symfony\Bundle\FrameworkBundle\Tests\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\TemplateController;
-use Symfony\Bundle\FrameworkBundle\Templating\EngineInterface;
 use Symfony\Bundle\FrameworkBundle\Tests\TestCase;
+use Twig\Environment;
+use Twig\Loader\ArrayLoader;
 
 /**
  * @author Kévin Dunglas <dunglas@gmail.com>
@@ -31,26 +32,31 @@ class TemplateControllerTest extends TestCase
         $this->assertEquals('bar', $controller('mytemplate')->getContent());
     }
 
-    public function testTemplating()
+    public function testNoTwig()
     {
-        $templating = $this->getMockBuilder(EngineInterface::class)->getMock();
-        $templating->expects($this->exactly(2))->method('render')->willReturn('bar');
-
-        $controller = new TemplateController(null, $templating);
-
-        $this->assertEquals('bar', $controller->templateAction('mytemplate')->getContent());
-        $this->assertEquals('bar', $controller('mytemplate')->getContent());
-    }
-
-    /**
-     * @expectedException \LogicException
-     * @expectedExceptionMessage You can not use the TemplateController if the Templating Component or the Twig Bundle are not available.
-     */
-    public function testNoTwigNorTemplating()
-    {
+        $this->expectException('LogicException');
+        $this->expectExceptionMessage('You can not use the TemplateController if the Twig Bundle is not available.');
         $controller = new TemplateController();
 
         $controller->templateAction('mytemplate')->getContent();
         $controller('mytemplate')->getContent();
+    }
+
+    public function testContext()
+    {
+        $templateName = 'template_controller.html.twig';
+        $context = [
+            'param' => 'hello world',
+        ];
+        $expected = '<h1>'.$context['param'].'</h1>';
+
+        $loader = new ArrayLoader();
+        $loader->setTemplate($templateName, '<h1>{{param}}</h1>');
+
+        $twig = new Environment($loader);
+        $controller = new TemplateController($twig);
+
+        $this->assertEquals($expected, $controller->templateAction($templateName, null, null, null, $context)->getContent());
+        $this->assertEquals($expected, $controller($templateName, null, null, null, $context)->getContent());
     }
 }

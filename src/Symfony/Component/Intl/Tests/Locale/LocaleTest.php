@@ -11,142 +11,123 @@
 
 namespace Symfony\Component\Intl\Tests\Locale;
 
+use Symfony\Component\Intl\Locale\Locale;
+
 class LocaleTest extends AbstractLocaleTest
 {
-    /**
-     * @expectedException \Symfony\Component\Intl\Exception\MethodNotImplementedException
-     */
     public function testAcceptFromHttp()
     {
+        $this->expectException('Symfony\Component\Intl\Exception\MethodNotImplementedException');
         $this->call('acceptFromHttp', 'pt-br,en-us;q=0.7,en;q=0.5');
     }
 
-    /**
-     * @expectedException \Symfony\Component\Intl\Exception\MethodNotImplementedException
-     */
+    public function testCanonicalize()
+    {
+        $this->assertSame('en', $this->call('canonicalize', ''));
+        $this->assertSame('en', $this->call('canonicalize', '.utf8'));
+        $this->assertSame('fr_FR', $this->call('canonicalize', 'FR-fr'));
+        $this->assertSame('fr_FR', $this->call('canonicalize', 'FR-fr.utf8'));
+        $this->assertSame('uz_Latn', $this->call('canonicalize', 'UZ-lATN'));
+        $this->assertSame('uz_Cyrl_UZ', $this->call('canonicalize', 'UZ-cYRL-uz'));
+        $this->assertSame('123', $this->call('canonicalize', 123));
+    }
+
     public function testComposeLocale()
     {
-        $subtags = array(
+        $this->expectException('Symfony\Component\Intl\Exception\MethodNotImplementedException');
+        $subtags = [
             'language' => 'pt',
             'script' => 'Latn',
             'region' => 'BR',
-        );
+        ];
         $this->call('composeLocale', $subtags);
     }
 
-    /**
-     * @expectedException \Symfony\Component\Intl\Exception\MethodNotImplementedException
-     */
     public function testFilterMatches()
     {
+        $this->expectException('Symfony\Component\Intl\Exception\MethodNotImplementedException');
         $this->call('filterMatches', 'pt-BR', 'pt-BR');
     }
 
-    /**
-     * @expectedException \Symfony\Component\Intl\Exception\MethodNotImplementedException
-     */
     public function testGetAllVariants()
     {
+        $this->expectException('Symfony\Component\Intl\Exception\MethodNotImplementedException');
         $this->call('getAllVariants', 'pt_BR_Latn');
     }
 
-    /**
-     * @expectedException \Symfony\Component\Intl\Exception\MethodNotImplementedException
-     */
     public function testGetDisplayLanguage()
     {
+        $this->expectException('Symfony\Component\Intl\Exception\MethodNotImplementedException');
         $this->call('getDisplayLanguage', 'pt-Latn-BR', 'en');
     }
 
-    /**
-     * @expectedException \Symfony\Component\Intl\Exception\MethodNotImplementedException
-     */
     public function testGetDisplayName()
     {
+        $this->expectException('Symfony\Component\Intl\Exception\MethodNotImplementedException');
         $this->call('getDisplayName', 'pt-Latn-BR', 'en');
     }
 
-    /**
-     * @expectedException \Symfony\Component\Intl\Exception\MethodNotImplementedException
-     */
     public function testGetDisplayRegion()
     {
+        $this->expectException('Symfony\Component\Intl\Exception\MethodNotImplementedException');
         $this->call('getDisplayRegion', 'pt-Latn-BR', 'en');
     }
 
-    /**
-     * @expectedException \Symfony\Component\Intl\Exception\MethodNotImplementedException
-     */
     public function testGetDisplayScript()
     {
+        $this->expectException('Symfony\Component\Intl\Exception\MethodNotImplementedException');
         $this->call('getDisplayScript', 'pt-Latn-BR', 'en');
     }
 
-    /**
-     * @expectedException \Symfony\Component\Intl\Exception\MethodNotImplementedException
-     */
     public function testGetDisplayVariant()
     {
+        $this->expectException('Symfony\Component\Intl\Exception\MethodNotImplementedException');
         $this->call('getDisplayVariant', 'pt-Latn-BR', 'en');
     }
 
-    /**
-     * @expectedException \Symfony\Component\Intl\Exception\MethodNotImplementedException
-     */
     public function testGetKeywords()
     {
+        $this->expectException('Symfony\Component\Intl\Exception\MethodNotImplementedException');
         $this->call('getKeywords', 'pt-BR@currency=BRL');
     }
 
-    /**
-     * @expectedException \Symfony\Component\Intl\Exception\MethodNotImplementedException
-     */
     public function testGetPrimaryLanguage()
     {
+        $this->expectException('Symfony\Component\Intl\Exception\MethodNotImplementedException');
         $this->call('getPrimaryLanguage', 'pt-Latn-BR');
     }
 
-    /**
-     * @expectedException \Symfony\Component\Intl\Exception\MethodNotImplementedException
-     */
     public function testGetRegion()
     {
+        $this->expectException('Symfony\Component\Intl\Exception\MethodNotImplementedException');
         $this->call('getRegion', 'pt-Latn-BR');
     }
 
-    /**
-     * @expectedException \Symfony\Component\Intl\Exception\MethodNotImplementedException
-     */
     public function testGetScript()
     {
+        $this->expectException('Symfony\Component\Intl\Exception\MethodNotImplementedException');
         $this->call('getScript', 'pt-Latn-BR');
     }
 
-    /**
-     * @expectedException \Symfony\Component\Intl\Exception\MethodNotImplementedException
-     */
     public function testLookup()
     {
-        $langtag = array(
+        $this->expectException('Symfony\Component\Intl\Exception\MethodNotImplementedException');
+        $langtag = [
             'pt-Latn-BR',
             'pt-BR',
-        );
+        ];
         $this->call('lookup', $langtag, 'pt-BR-x-priv1');
     }
 
-    /**
-     * @expectedException \Symfony\Component\Intl\Exception\MethodNotImplementedException
-     */
     public function testParseLocale()
     {
+        $this->expectException('Symfony\Component\Intl\Exception\MethodNotImplementedException');
         $this->call('parseLocale', 'pt-Latn-BR');
     }
 
-    /**
-     * @expectedException \Symfony\Component\Intl\Exception\MethodNotImplementedException
-     */
     public function testSetDefault()
     {
+        $this->expectException('Symfony\Component\Intl\Exception\MethodNotImplementedException');
         $this->call('setDefault', 'pt_BR');
     }
 
@@ -159,8 +140,8 @@ class LocaleTest extends AbstractLocaleTest
 
     protected function call($methodName)
     {
-        $args = array_slice(func_get_args(), 1);
+        $args = \array_slice(\func_get_args(), 1);
 
-        return call_user_func_array(array('Symfony\Component\Intl\Locale\Locale', $methodName), $args);
+        return Locale::{$methodName}(...$args);
     }
 }

@@ -2,6 +2,8 @@
 
 namespace Symfony\Component\DependencyInjection\Tests\Compiler;
 
+use Psr\Log\LoggerInterface;
+
 class Foo
 {
 }
@@ -116,20 +118,6 @@ class CannotBeAutowired
     }
 }
 
-class CannotBeAutowiredForwardOrder
-{
-    public function __construct(CollisionA $a, CollisionInterface $b, CollisionB $c)
-    {
-    }
-}
-
-class CannotBeAutowiredReverseOrder
-{
-    public function __construct(CollisionA $a, CollisionB $c, CollisionInterface $b)
-    {
-    }
-}
-
 class Lille
 {
 }
@@ -181,7 +169,7 @@ class NotGuessableArgumentForSubclass
 }
 class MultipleArguments
 {
-    public function __construct(A $k, $foo, Dunglas $dunglas)
+    public function __construct(A $k, $foo, Dunglas $dunglas, array $bar)
     {
     }
 }
@@ -276,6 +264,39 @@ class SetterInjection extends SetterInjectionParent
     }
 }
 
+class Wither
+{
+    public $foo;
+
+    /**
+     * @required
+     */
+    public function setFoo(Foo $foo)
+    {
+    }
+
+    /**
+     * @required
+     * @return static
+     */
+    public function withFoo1(Foo $foo): self
+    {
+        return $this->withFoo2($foo);
+    }
+
+    /**
+     * @required
+     * @return static
+     */
+    public function withFoo2(Foo $foo): self
+    {
+        $new = clone $this;
+        $new->foo = $foo;
+
+        return $new;
+    }
+}
+
 class SetterInjectionParent
 {
     /** @required*/
@@ -349,6 +370,45 @@ class ScalarSetter
      * @required
      */
     public function setDefaultLocale($defaultLocale)
+    {
+    }
+}
+
+interface DecoratorInterface
+{
+}
+
+class Decorated implements DecoratorInterface
+{
+    public function __construct($quz = null, \NonExistent $nonExistent = null, DecoratorInterface $decorated = null, array $foo = [])
+    {
+    }
+}
+
+class Decorator implements DecoratorInterface
+{
+    public function __construct(LoggerInterface $logger, DecoratorInterface $decorated)
+    {
+    }
+}
+
+class DecoratedDecorator implements DecoratorInterface
+{
+    public function __construct(DecoratorInterface $decorator)
+    {
+    }
+}
+
+class NonAutowirableDecorator implements DecoratorInterface
+{
+    public function __construct(LoggerInterface $logger, DecoratorInterface $decorated1, DecoratorInterface $decorated2)
+    {
+    }
+}
+
+final class ElsaAction
+{
+    public function __construct(NotExisting $notExisting)
     {
     }
 }

@@ -12,6 +12,7 @@
 namespace Symfony\Component\Security\Core\Tests\User;
 
 use PHPUnit\Framework\TestCase;
+use Symfony\Component\Security\Core\User\User;
 use Symfony\Component\Security\Core\User\UserChecker;
 
 class UserCheckerTest extends TestCase
@@ -26,84 +27,34 @@ class UserCheckerTest extends TestCase
     public function testCheckPostAuthPass()
     {
         $checker = new UserChecker();
-
-        $account = $this->getMockBuilder('Symfony\Component\Security\Core\User\AdvancedUserInterface')->getMock();
-        $account->expects($this->once())->method('isCredentialsNonExpired')->will($this->returnValue(true));
-
-        $this->assertNull($checker->checkPostAuth($account));
+        $this->assertNull($checker->checkPostAuth(new User('John', 'password')));
     }
 
-    /**
-     * @expectedException \Symfony\Component\Security\Core\Exception\CredentialsExpiredException
-     */
     public function testCheckPostAuthCredentialsExpired()
     {
+        $this->expectException('Symfony\Component\Security\Core\Exception\CredentialsExpiredException');
         $checker = new UserChecker();
-
-        $account = $this->getMockBuilder('Symfony\Component\Security\Core\User\AdvancedUserInterface')->getMock();
-        $account->expects($this->once())->method('isCredentialsNonExpired')->will($this->returnValue(false));
-
-        $checker->checkPostAuth($account);
+        $checker->checkPostAuth(new User('John', 'password', [], true, true, false, true));
     }
 
-    public function testCheckPreAuthNotAdvancedUserInterface()
-    {
-        $checker = new UserChecker();
-
-        $this->assertNull($checker->checkPreAuth($this->getMockBuilder('Symfony\Component\Security\Core\User\UserInterface')->getMock()));
-    }
-
-    public function testCheckPreAuthPass()
-    {
-        $checker = new UserChecker();
-
-        $account = $this->getMockBuilder('Symfony\Component\Security\Core\User\AdvancedUserInterface')->getMock();
-        $account->expects($this->once())->method('isAccountNonLocked')->will($this->returnValue(true));
-        $account->expects($this->once())->method('isEnabled')->will($this->returnValue(true));
-        $account->expects($this->once())->method('isAccountNonExpired')->will($this->returnValue(true));
-
-        $this->assertNull($checker->checkPreAuth($account));
-    }
-
-    /**
-     * @expectedException \Symfony\Component\Security\Core\Exception\LockedException
-     */
     public function testCheckPreAuthAccountLocked()
     {
+        $this->expectException('Symfony\Component\Security\Core\Exception\LockedException');
         $checker = new UserChecker();
-
-        $account = $this->getMockBuilder('Symfony\Component\Security\Core\User\AdvancedUserInterface')->getMock();
-        $account->expects($this->once())->method('isAccountNonLocked')->will($this->returnValue(false));
-
-        $checker->checkPreAuth($account);
+        $checker->checkPreAuth(new User('John', 'password', [], true, true, false, false));
     }
 
-    /**
-     * @expectedException \Symfony\Component\Security\Core\Exception\DisabledException
-     */
     public function testCheckPreAuthDisabled()
     {
+        $this->expectException('Symfony\Component\Security\Core\Exception\DisabledException');
         $checker = new UserChecker();
-
-        $account = $this->getMockBuilder('Symfony\Component\Security\Core\User\AdvancedUserInterface')->getMock();
-        $account->expects($this->once())->method('isAccountNonLocked')->will($this->returnValue(true));
-        $account->expects($this->once())->method('isEnabled')->will($this->returnValue(false));
-
-        $checker->checkPreAuth($account);
+        $checker->checkPreAuth(new User('John', 'password', [], false, true, false, true));
     }
 
-    /**
-     * @expectedException \Symfony\Component\Security\Core\Exception\AccountExpiredException
-     */
     public function testCheckPreAuthAccountExpired()
     {
+        $this->expectException('Symfony\Component\Security\Core\Exception\AccountExpiredException');
         $checker = new UserChecker();
-
-        $account = $this->getMockBuilder('Symfony\Component\Security\Core\User\AdvancedUserInterface')->getMock();
-        $account->expects($this->once())->method('isAccountNonLocked')->will($this->returnValue(true));
-        $account->expects($this->once())->method('isEnabled')->will($this->returnValue(true));
-        $account->expects($this->once())->method('isAccountNonExpired')->will($this->returnValue(false));
-
-        $checker->checkPreAuth($account);
+        $checker->checkPreAuth(new User('John', 'password', [], true, false, true, true));
     }
 }

@@ -19,13 +19,37 @@ class ConfigurationTest extends TestCase
 {
     public function testDoNoDuplicateDefaultFormResources()
     {
-        $input = array(
-            'form_themes' => array('form_div_layout.html.twig'),
-        );
+        $input = [
+            'form_themes' => ['form_div_layout.html.twig'],
+        ];
 
         $processor = new Processor();
-        $config = $processor->processConfiguration(new Configuration(), array($input));
+        $config = $processor->processConfiguration(new Configuration(), [$input]);
 
-        $this->assertEquals(array('form_div_layout.html.twig'), $config['form_themes']);
+        $this->assertEquals(['form_div_layout.html.twig'], $config['form_themes']);
+    }
+
+    public function testGlobalsAreNotNormalized()
+    {
+        $input = [
+            'globals' => ['some-global' => true],
+        ];
+
+        $processor = new Processor();
+        $config = $processor->processConfiguration(new Configuration(), [$input]);
+
+        $this->assertSame(['some-global' => ['value' => true]], $config['globals']);
+    }
+
+    public function testArrayKeysInGlobalsAreNotNormalized()
+    {
+        $input = [
+            'globals' => ['global' => ['some-key' => 'some-value']],
+        ];
+
+        $processor = new Processor();
+        $config = $processor->processConfiguration(new Configuration(), [$input]);
+
+        $this->assertSame(['global' => ['value' => ['some-key' => 'some-value']]], $config['globals']);
     }
 }

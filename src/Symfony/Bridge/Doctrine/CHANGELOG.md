@@ -1,6 +1,44 @@
 CHANGELOG
 =========
 
+5.0.0
+-----
+
+ * the `getMetadataDriverClass()` method is abstract and must be implemented by class extending `AbstractDoctrineExtension`
+ * passing an `IdReader` to the `DoctrineChoiceLoader` when the query cannot be optimized with single id field, throws an exception; pass `null` instead
+ * not explicitly passing an instance of `IdReader` to `DoctrineChoiceLoader` when it can optimize single id field, will not apply any optimization
+ * `DoctrineExtractor` now requires an `EntityManagerInterface` on instantiation
+
+4.4.0
+-----
+
+ * [BC BREAK] using null as `$classValidatorRegexp` value in `DoctrineLoader::__construct` will not enable auto-mapping for all classes anymore, use `'{.*}'` instead.
+ * added `DoctrineClearEntityManagerWorkerSubscriber`
+ * deprecated `RegistryInterface`, use `Doctrine\Persistence\ManagerRegistry`
+ * added support for invokable event listeners
+ * added `getMetadataDriverClass` method to deprecate class parameters in service configuration files
+
+4.3.0
+-----
+
+ * changed guessing of DECIMAL to set the `input` option of `NumberType` to string
+ * deprecated not passing an `IdReader` to the `DoctrineChoiceLoader` when query can be optimized with a single id field
+ * deprecated passing an `IdReader` to the `DoctrineChoiceLoader` when entities have a composite id
+ * added two Messenger middleware: `DoctrinePingConnectionMiddleware` and `DoctrineCloseConnectionMiddleware`
+
+4.2.0
+-----
+
+ * deprecated injecting `ClassMetadataFactory` in `DoctrineExtractor`,
+   an instance of `EntityManagerInterface` should be injected instead
+ * added support for `simple_array` type
+ * the `DoctrineTransactionMiddlewareFactory` class has been removed
+
+4.1.0
+-----
+
+ * added support for datetime immutable types in form type guesser
+
 4.0.0
 -----
 
